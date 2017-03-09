@@ -10,7 +10,7 @@ from art_projected_gui.items import ObjectItem, ButtonItem, PoseStampedCursorIte
 from art_projected_gui.helpers import ProjectorHelper,  conversions
 from art_utils import InterfaceStateManager,  ArtApiHelper, ProgramHelper
 from art_msgs.srv import TouchCalibrationPoints,  TouchCalibrationPointsResponse,  NotifyUser,  NotifyUserResponse
-from std_msgs.msg import Empty,  Bool
+from std_msgs.msg import Empty,  Bool, String
 from std_srvs.srv import Trigger,  TriggerRequest
 from geometry_msgs.msg import PoseStamped
 import actionlib
@@ -51,6 +51,8 @@ class UICoreRos(UICore):
         QtCore.QObject.connect(self, QtCore.SIGNAL('touch_detected_evt'), self.touch_detected_evt)
         QtCore.QObject.connect(self, QtCore.SIGNAL('notify_user_evt'), self.notify_user_evt)
         QtCore.QObject.connect(self, QtCore.SIGNAL('learning_request_done_evt'), self.learning_request_done_evt)
+        QtCore.QObject.connect(self, QtCore.SIGNAL('r5cop_object_id_evt'), self.r5cop_object_id_evt)
+        self.r5cop_dialog = None
 
         self.user_status = None
 
@@ -195,12 +197,37 @@ class UICoreRos(UICore):
         # TODO move this to ArtApiHelper ??
         self.obj_sub = rospy.Subscriber('/art/object_detector/object_filtered', InstancesArray, self.object_cb, queue_size=1)
         self.user_status_sub = rospy.Subscriber('/art/user/status', UserStatus, self.user_status_cb, queue_size=1)
+        self.r5cop_object_id_sub = rospy.Subscriber('/r5cop_detected_object', String, self.r5cop_object_id_cb, queue_size=1)
 
         self.touch_points = None
         self.touch_calib_srv = rospy.Service('/art/interface/projected_gui/touch_calibration', TouchCalibrationPoints, self.touch_calibration_points_cb)
         self.notify_user_srv = rospy.Service('/art/interface/projected_gui/notify_user', NotifyUser, self.notify_user_srv_cb)
 
         self.fsm.tr_start()
+        
+    def r5cop_dialog_res(self, idx):
+        
+        if idx == 0:
+            self.notif("Classified as garbage")
+        else:
+            self.notif("Classified as something useful")
+            
+        self.scene.removeItem(self.r5cop_dialog)
+        self.r5cop_dialog = None
+        
+    def r5cop_object_id_evt(self, msg):
+        
+        if self.r5cop_dialog is None:
+        
+            self.r5cop_dialog = DialogItem(self.scene, self.width/2, 0.1, "Please classify object " + msg.data, ["Garbage", "Not garbage"],  self.r5cop_dialog_res)
+            
+        else:
+            
+            rospy.logwarn("Ignoring detected object: " + msg.data)
+        
+    def r5cop_object_id_cb(self, msg):
+        
+        self.emit(QtCore.SIGNAL('r5cop_object_id_evt'), msg)
 
     def notify_user_srv_cb(self,  req):
 
