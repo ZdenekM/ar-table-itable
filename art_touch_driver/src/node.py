@@ -42,7 +42,7 @@ class ArtTouchDriver:
         self.y = 0
         self.touch = False
         self.touch_id = -1
-        self.device = input.EventDevice("/dev/input/event17")
+        self.device = input.EventDevice("/dev/input/event6")
 
         self.slots = []
         self.slot = None
@@ -126,7 +126,8 @@ class ArtTouchDriver:
     def process(self):
         # print 1 if self.device._eventq else 0
         event = self.device.read()
-        while True:
+        print "asdf"
+	while True:
             if event.evtype == 3 and event.code == 47 and event.value >= 0:
                 # MT_SLOT
                 self.slot = self.get_slot_by_id(event.value)

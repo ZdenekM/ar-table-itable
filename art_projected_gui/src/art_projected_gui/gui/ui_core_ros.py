@@ -219,7 +219,7 @@ class UICoreRos(UICore):
         
         if self.r5cop_dialog is None:
         
-            self.r5cop_dialog = DialogItem(self.scene, self.width/2, 0.1, "Please classify object " + msg.data, ["Garbage", "Not garbage"],  self.r5cop_dialog_res)
+            self.r5cop_dialog = DialogItem(self.scene, self.width/2, 0.4, "Please classify object " + msg.data, ["Garbage", "Not garbage"],  self.r5cop_dialog_res)
             
         else:
             
