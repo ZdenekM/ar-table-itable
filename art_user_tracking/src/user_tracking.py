@@ -12,6 +12,8 @@ import caffe
 import time
 import cv2
 import pylab as plt
+import scipy
+from scipy.ndimage.filters import gaussian_filter
 
 
 class UserTracking():
@@ -20,6 +22,7 @@ class UserTracking():
 
         self.stride = 8
         self.padValue = 128
+        self.thre1 = 0.1
 
         self.bridge = CvBridge()
 
@@ -28,7 +31,7 @@ class UserTracking():
         self.subs.append(message_filters.Subscriber('/kinect2_n2/sd/camera_info', CameraInfo))
         self.subs.append(message_filters.Subscriber('/kinect2_n2/sd/image_depth_rect', Image))
 
-        self.ts = message_filters.TimeSynchronizer(self.subs, 10)
+        self.ts = message_filters.TimeSynchronizer(self.subs, 1)
         self.ts.registerCallback(self.sync_cb)
 
         self.data_path = rospkg.RosPack().get_path('art_user_tracking') + '/data/'
@@ -81,13 +84,10 @@ class UserTracking():
 
         print "sync_cb"
 
-        print ("cv_img.shape", cv_img.shape)
-        scale = 368.0 / cv_img.shape[0]
+        scale = 0.25 * 368.0 / cv_img.shape[0]
         img_scaled = cv2.resize(cv_img, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
-        print ("img_scaled.shape", img_scaled.shape)
-        img_padded, pad = self.padRightDownCorner(img_scaled, self.stride, self.padValue)
 
-        print ("img_padded.shape", img_padded.shape)
+        img_padded, pad = self.padRightDownCorner(img_scaled, self.stride, self.padValue)
 
         # cv2.imshow('dst_rt', img_padded)
         # cv2.waitKey(0)
@@ -99,6 +99,43 @@ class UserTracking():
         print "forward..."
         output_blobs = self.net.forward()
         print('The CNN took %.2f ms.' % (1000 * (time.time() - start_time)))
+
+        heatmap = np.transpose(np.squeeze(self.net.blobs[output_blobs.keys()[1]].data), (1, 2, 0))  # output 1 is heatmaps
+        heatmap = cv2.resize(heatmap, (0, 0), fx=self.stride, fy=self.stride, interpolation=cv2.INTER_CUBIC)
+        heatmap = heatmap[:img_padded.shape[0] - pad[2], :img_padded.shape[1] - pad[3], :]
+        heatmap = cv2.resize(heatmap, (cv_img.shape[1], cv_img.shape[0]), interpolation=cv2.INTER_CUBIC)
+
+        paf = np.transpose(np.squeeze(self.net.blobs[output_blobs.keys()[0]].data), (1, 2, 0))  # output 0 is PAFs
+        paf = cv2.resize(paf, (0, 0), fx=self.stride, fy=self.stride, interpolation=cv2.INTER_CUBIC)
+        paf = paf[:img_padded.shape[0] - pad[2], :img_padded.shape[1] - pad[3], :]
+        paf = cv2.resize(paf, (cv_img.shape[1], cv_img.shape[0]), interpolation=cv2.INTER_CUBIC)
+
+        all_peaks = []
+        peak_counter = 0
+
+        for part in range(19 - 1):
+            x_list = []
+            y_list = []
+            map_ori = heatmap[:, :, part]
+            map = gaussian_filter(map_ori, sigma=3)
+
+            map_left = np.zeros(map.shape)
+            map_left[1:, :] = map[:-1, :]
+            map_right = np.zeros(map.shape)
+            map_right[:-1, :] = map[1:, :]
+            map_up = np.zeros(map.shape)
+            map_up[:, 1:] = map[:, :-1]
+            map_down = np.zeros(map.shape)
+            map_down[:, :-1] = map[:, 1:]
+
+            peaks_binary = np.logical_and.reduce((map >= map_left, map >= map_right, map >= map_up, map >= map_down, map > self.thre1))
+            peaks = zip(np.nonzero(peaks_binary)[1], np.nonzero(peaks_binary)[0])  # note reverse
+            peaks_with_score = [x + (map_ori[x[1], x[0]],) for x in peaks]
+            id = range(peak_counter, peak_counter + len(peaks))
+            peaks_with_score_and_id = [peaks_with_score[i] + (id[i],) for i in range(len(id))]
+
+            all_peaks.append(peaks_with_score_and_id)
+            peak_counter += len(peaks)
 
 
 if __name__ == '__main__':
