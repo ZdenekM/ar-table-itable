@@ -7,17 +7,21 @@ from image_geometry import PinholeCameraModel
 import tf
 import rospkg
 import message_filters
-from configobj import ConfigObj
 import numpy as np
 import caffe
+import time
+import cv2
+import pylab as plt
 
 
 class UserTracking():
 
     def __init__(self):
 
+        self.stride = 8
+        self.padValue = 128
+
         self.bridge = CvBridge()
-        self.image_sub = rospy.Subscriber("image_topic", Image, self.image_callback)
 
         self.subs = []
         self.subs.append(message_filters.Subscriber('/kinect2_n2/sd/image_color_rect', Image))
@@ -28,16 +32,15 @@ class UserTracking():
         self.ts.registerCallback(self.sync_cb)
 
         self.data_path = rospkg.RosPack().get_path('art_user_tracking') + '/data/'
-        self.read_config()
 
-        if param['use_gpu']:
+        if rospy.get_param("use_gpu", False):
             caffe.set_mode_gpu()
-            caffe.set_device(self.param['GPUdeviceNumber'])  # set to your device!
+            caffe.set_device(rospy.get_param('GPUdeviceNumber', 0))  # set to your device!
         else:
             caffe.set_mode_cpu()
         self.net = caffe.Net(self.data_path + 'pose_deploy.prototxt', self.data_path + 'pose_iter_440000.caffemodel', caffe.TEST)
 
-    def padRightDownCorner(img, stride, padValue):
+    def padRightDownCorner(self, img, stride, padValue):
         h = img.shape[0]
         w = img.shape[1]
 
@@ -59,36 +62,10 @@ class UserTracking():
 
         return img_padded, pad
 
-    def read_config(self):
-
-        config = ConfigObj(self.data_path + 'config')
-
-        self.param = config['param']
-        model_id = self.param['modelID']
-        self.model = config['models'][model_id]
-        self.model['boxsize'] = int(self.model['boxsize'])
-        self.model['stride'] = int(self.model['stride'])
-        self.model['padValue'] = int(self.model['padValue'])
-        # self.param'starting_range'] = float(self.param'starting_range'])
-        # self.param'ending_range'] = float(self.param'ending_range'])
-        self.param['octave'] = int(self.param['octave'])
-        self.param['use_gpu'] = int(self.param['use_gpu'])
-        self.param['starting_range'] = float(self.param['starting_range'])
-        self.param['ending_range'] = float(self.param['ending_range'])
-        self.param['scale_search'] = map(float, self.param['scale_search'])
-        self.param['thre1'] = float(self.param['thre1'])
-        self.param['thre2'] = float(self.param['thre2'])
-        self.param['thre3'] = float(self.param['thre3'])
-        self.param['mid_num'] = int(self.param['mid_num'])
-        self.param['min_num'] = int(self.param['min_num'])
-        self.param['crop_ratio'] = float(self.param['crop_ratio'])
-        self.param['bbox_ratio'] = float(self.param['bbox_ratio'])
-        self.param['GPUdeviceNumber'] = int(self.param['GPUdeviceNumber'])
-
     def sync_cb(self, image, cam_info, depth):
 
         model = PinholeCameraModel()
-        model.fromCameraInfo(info)
+        model.fromCameraInfo(cam_info)
 
         try:
             cv_img = self.bridge.imgmsg_to_cv2(image, "bgr8")
@@ -102,12 +79,24 @@ class UserTracking():
             print(e)
             return
 
-        img_padded, pad = self.padRightDownCorner(cv_img, self.model['stride'], self.model['padValue'])
+        print "sync_cb"
+
+        print ("cv_img.shape", cv_img.shape)
+        scale = 368.0 / cv_img.shape[0]
+        img_scaled = cv2.resize(cv_img, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+        print ("img_scaled.shape", img_scaled.shape)
+        img_padded, pad = self.padRightDownCorner(img_scaled, self.stride, self.padValue)
+
+        print ("img_padded.shape", img_padded.shape)
+
+        # cv2.imshow('dst_rt', img_padded)
+        # cv2.waitKey(0)
 
         self.net.blobs['data'].reshape(*(1, 3, img_padded.shape[0], img_padded.shape[1]))
-        # net.forward() # dry run
+        # self.net.forward() # dry run
         self.net.blobs['data'].data[...] = np.transpose(np.float32(img_padded[:, :, :, np.newaxis]), (3, 2, 0, 1)) / 256 - 0.5;
         start_time = time.time()
+        print "forward..."
         output_blobs = self.net.forward()
         print('The CNN took %.2f ms.' % (1000 * (time.time() - start_time)))
 
@@ -118,6 +107,7 @@ if __name__ == '__main__':
 
         rospy.init_node('art_user_tracking')
         UserTracking()
+        rospy.spin()
 
     except rospy.ROSInterruptException:
         pass
