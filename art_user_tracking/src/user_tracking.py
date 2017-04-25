@@ -4,7 +4,6 @@ from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, CameraInfo
 import rospy
 from image_geometry import PinholeCameraModel
-import tf
 import rospkg
 import message_filters
 import numpy as np
@@ -17,13 +16,13 @@ from scipy.ndimage.filters import gaussian_filter
 import math
 from geometry_msgs.msg import Point
 from art_msgs.msg import User, UserArray
+from visualization_msgs.msg import Marker
 
 
-class UserTracking():
+class UserDetector():
 
     def __init__(self):
 
-        self.tfl = tf.TransformListener()
         self.stride = 8
         self.padValue = 128
         self.thre1 = 0.1
@@ -69,6 +68,8 @@ class UserTracking():
         self.part_str = ['nose', 'neck', 'Rsho', 'Relb', 'Rwri', 'Lsho', 'Lelb', 'Lwri', 'Rhip', 'Rkne', 'Rank', 'Lhip', 'Lkne', 'Lank', 'Leye', 'Reye', 'Lear', 'Rear', 'pt19']
 
         self.user_array_pub = rospy.Publisher('users', UserArray, queue_size=10)
+        self.marker_pub = rospy.Publisher('marker', Marker, queue_size=10)
+        rospy.loginfo('User detector ready')
 
     def padRightDownCorner(self, img, stride, padValue):
         h = img.shape[0]
@@ -112,8 +113,6 @@ class UserTracking():
             print(e)
             return
 
-        print "sync_cb"
-
         scale = 0.25 * 368.0 / cv_img.shape[0]
         img_scaled = cv2.resize(
             cv_img, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
@@ -121,18 +120,15 @@ class UserTracking():
         img_padded, pad = self.padRightDownCorner(
             img_scaled, self.stride, self.padValue)
 
-        # cv2.imshow('dst_rt', img_padded)
-        # cv2.waitKey(0)
-
         self.net.blobs['data'].reshape(
             *(1, 3, img_padded.shape[0], img_padded.shape[1]))
         # self.net.forward() # dry run
         self.net.blobs['data'].data[...] = np.transpose(np.float32(
             img_padded[:, :, :, np.newaxis]), (3, 2, 0, 1)) / 256 - 0.5;
         start_time = time.time()
-        print "forward..."
+
         output_blobs = self.net.forward()
-        print('The CNN took %.2f ms.' % (1000 * (time.time() - start_time)))
+        rospy.logdebug('The CNN took %.2f ms.' % (1000 * (time.time() - start_time)))
 
         heatmap = np.transpose(np.squeeze(self.net.blobs[output_blobs.keys()[
                                1]].data), (1, 2, 0))  # output 1 is heatmaps
@@ -167,8 +163,7 @@ class UserTracking():
         peak_counter = 0
 
         for part in range(19 - 1):
-            x_list = []
-            y_list = []
+
             map_ori = heatmap[:, :, part]
             map = gaussian_filter(map_ori, sigma=3)
 
@@ -346,6 +341,20 @@ class UserTracking():
         ua = UserArray()
         ua.header = image.header
 
+        marker = Marker()
+        marker.header = image.header
+        marker.id = 0
+        marker.type = marker.POINTS
+        marker.action = marker.ADD
+        marker.lifetime = rospy.Duration(0)
+        marker.scale.x = 0.01
+        marker.scale.y = 0.01
+        marker.scale.z = 0.01
+        marker.color.a = 1.0
+        marker.color.r = 1.0
+        marker.pose.orientation.w = 1.0
+        marker.ns = "detected_parts"
+
         for n in range(len(subset)):
 
             user = User()
@@ -356,29 +365,32 @@ class UserTracking():
             for i in range(18):
 
                 idx = int(subset[n][i])
-                print idx
 
                 if idx == -1:
-                    print self.part_str[i] + " not found"
+                    rospy.logdebug(self.part_str[i] + " not found")
                     continue
                 Y = candidate[idx, 0]
                 X = candidate[idx, 1]
+
+                cv2.circle(cv_img,(int(Y),int(X)), 5, (0,255,0), -1)
+                cv2.circle(cv_depth,(int(Y),int(X)), 5, (255,255,255), -1)
 
                 pt = list(model.projectPixelTo3dRay((X, Y)))
                 pt[:] = [x / pt[2] for x in pt]
 
                 # depth image is noisy - let's make mean of few pixels
                 da = []
-                for x in range(max(int(X) - 1, 0), min(int(X) + 2, cv_depth.shape[1] - 1)):
-                    for y in range(max(int(Y) - 1, 0), min(int(Y) + 2, cv_depth.shape[0] - 1)):
+                depth_win = 6
+                for x in range(max(int(X) - depth_win/2, 0), min(int(X) + depth_win/2+1, cv_depth.shape[1] - 1)):
+                    for y in range(max(int(Y) - depth_win/2, 0), min(int(Y) + depth_win/2+1, cv_depth.shape[0] - 1)):
                         val = cv_depth[y, x]
                         if val > 0:
                             da.append(cv_depth[y, x] / 1000.0)
 
                 if len(da) == 0:
-                    print "unknown depth for " + self.part_str[i]
+                    rospy.logdebug("unknown depth for " + self.part_str[i])
                     continue
-                d = np.min(da)
+                d = np.median(da)
                 pt[:] = [x * d for x in pt]
 
                 p = Point()
@@ -387,12 +399,16 @@ class UserTracking():
                 p.z = pt[2]
 
                 user.detected_parts.append(i)
+                marker.points.append(p)
                 user.parts[i] = p
 
-        print ua
+        # cv2.imshow('image', cv_img)
+        # cv2.imshow('depth', cv_depth)
+        # cv2.waitKey(25)
+
         self.user_array_pub.publish(ua)
-        print('Whole callback took %.2f ms.' % (1000 * (time.time() - start_time)))
-        print
+        self.marker_pub.publish(marker)
+        rospy.logdebug('Whole callback took %.2f ms.' % (1000 * (time.time() - start_time)))
 
 
 if __name__ == '__main__':
@@ -400,7 +416,7 @@ if __name__ == '__main__':
     try:
 
         rospy.init_node('art_user_tracking')
-        UserTracking()
+        UserDetector()
         rospy.spin()
 
     except rospy.ROSInterruptException:
