@@ -96,6 +96,8 @@ class UserDetector():
 
     def sync_cb(self, image, cam_info, depth):
 
+        print "sync_cb"
+
         if self.model is None:
 
             self.model = PinholeCameraModel()
@@ -113,7 +115,7 @@ class UserDetector():
             print(e)
             return
 
-        scale = 0.5 * 368.0 / cv_img.shape[0]
+        scale = 0.25 * 368.0 / cv_img.shape[0]
         img_scaled = cv2.resize(
             cv_img, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
 
@@ -433,7 +435,7 @@ if __name__ == '__main__':
 
     try:
 
-        rospy.init_node('art_user_detector')
+        rospy.init_node('art_user_detector', log_level=rospy.DEBUG)
         UserDetector()
         rospy.spin()
 
