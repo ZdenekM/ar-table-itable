@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
 import rospy
-from art_msgs.msg import Program
-from geometry_msgs.msg import Pose, Polygon
+from art_msgs.msg import Program, ProgramBlock, ProgramItem
+from geometry_msgs.msg import Pose, Polygon, PoseStamped, PolygonStamped
 from art_helpers import InstructionsHelper
+from typing import List, Tuple
 
 
 class ProgramHelperException(Exception):
@@ -27,6 +28,7 @@ class ProgramHelper(object):
         self.ih = InstructionsHelper()
 
     def load(self, prog, template=False):
+        # type: (Program, bool) -> bool
 
         if not isinstance(prog, Program):
             rospy.logerr("Invalid argument. Should be Program message.")
@@ -197,31 +199,38 @@ class ProgramHelper(object):
         return True
 
     def get_program(self):
+        # type: () -> Program
 
         return self._prog
 
     def get_program_id(self):
+        # type: () -> int
 
         return self._prog.header.id
 
     def get_block_msg(self, block_id):
+        # type: (int) -> ProgramBlock
 
         block_idx = self._cache[block_id]["idx"]
         return self._prog.blocks[block_idx]
 
     def get_block_ids(self):
+        # type: () -> List[int]
 
         return self._cache.keys()
 
     def get_items_ids(self, block_id):
+        # type: (int) -> List[int]
 
         return self._cache[block_id]["items"].keys()
 
     def get_first_block_id(self):
+        # type: () -> int
 
         return min(self._cache, key=self._cache.get)
 
     def get_first_item_id(self, block_id=None):
+        # type: (int) -> Tuple[int, int]
 
         if block_id is None:
             block_id = self.get_first_block_id()
@@ -230,12 +239,14 @@ class ProgramHelper(object):
         return block_id, item_id
 
     def get_item_msg(self, block_id, item_id):
+        # type: (int, int) -> ProgramItem
 
         block_idx = self._cache[block_id]["idx"]
         item_idx = self._cache[block_id]["items"][item_id]["idx"]
         return self._prog.blocks[block_idx].items[item_idx]
 
     def set_item_msg(self, block_id, msg):
+        # type: (int, ProgramItem) -> None
 
         block_idx = self._cache[block_id]["idx"]
         item_idx = self._cache[block_id]["items"][msg.id]["idx"]
@@ -248,10 +259,12 @@ class ProgramHelper(object):
         self._prog.blocks[block_idx].items[item_idx] = msg
 
     def _get_block_on(self, block_id, what):
+        # type: (int, str) -> int
 
         return self._cache[block_id][what]
 
     def _get_item_on(self, block_id, item_id, what):
+        # type: (int, int, str) -> Tuple[int, int]
 
         item_id_on = self._cache[block_id]["items"][item_id][what]
 
@@ -271,52 +284,63 @@ class ProgramHelper(object):
             return block_id, item_id_on
 
     def get_id_on_success(self, block_id, item_id):
+        # type: (int, int) -> Tuple[int, int]
 
         return self._get_item_on(block_id, item_id, "on_success")
 
     def get_id_on_failure(self, block_id, item_id):
+        # type: (int, int) -> Tuple[int, int]
 
         return self._get_item_on(block_id, item_id, "on_failure")
 
     def get_block_on_success(self, block_id):
+        # type: (int) -> int
 
         return self._get_block_on(block_id, "on_success")
 
     def get_block_on_failure(self, block_id):
+        # type: (int) -> int
 
         return self._get_block_on(block_id, "on_failure")
 
     def get_item_type(self, block_id, item_id):
+        # type: (int, int) -> int
 
         msg = self.get_item_msg(block_id, item_id)
         return msg.type
 
     def item_requires_learning(self, block_id, item_id):
+        # type: (int, int) -> bool
 
         return self.ih.requires_learning(self.get_item_type(block_id, item_id))
 
     def _check_for_pose(self, msg):
+        # type: (ProgramItem) -> None
 
         if msg.type not in self.ih.properties.using_pose:
             raise ProgramHelperException("Instruction type " + str(msg.type) + " does not use 'pose'.")
 
     def _check_for_object(self, msg):
+        # type: (ProgramItem) -> None
 
         if msg.type not in self.ih.properties.using_object:
 
             raise ProgramHelperException("Instruction type " + str(msg.type) + " does not use 'object'.")
 
     def _check_for_polygon(self, msg):
+        # type: (ProgramItem) -> None
 
         if msg.type not in self.ih.properties.using_polygon:
 
             raise ProgramHelperException("Instruction type " + str(msg.type) + " does not use 'polygon'.")
 
     def get_name(self, block_id, item_id):
+        # type: (int, int) -> str
 
         return self.get_item_msg(block_id, item_id).name
 
     def get_pose(self, block_id, item_id):
+        # type: (int, int) -> Tuple[List[PoseStamped], int]
 
         msg = self.get_item_msg(block_id, item_id)
 
@@ -336,6 +360,7 @@ class ProgramHelper(object):
         raise ProgramHelperException("'pose' not found in item, nor in any referenced items.")
 
     def get_object(self, block_id, item_id):
+        # type: (int, int) -> Tuple[List[str], int]
 
         msg = self.get_item_msg(block_id, item_id)
 
@@ -355,6 +380,7 @@ class ProgramHelper(object):
         raise ProgramHelperException("'object' not found in item, nor in any referenced items.")
 
     def get_polygon(self, block_id, item_id):
+        # type: (int, int) -> Tuple[List[PolygonStamped], int]
 
         msg = self.get_item_msg(block_id, item_id)
 
@@ -374,6 +400,7 @@ class ProgramHelper(object):
         raise ProgramHelperException("'polygon' not found in item, nor in any referenced items.")
 
     def is_pose_set(self, block_id, item_id, idx=None):
+        # type: (int, int, int) -> bool
 
         ret = self.get_pose(block_id, item_id)
 
@@ -388,6 +415,7 @@ class ProgramHelper(object):
         return True
 
     def is_object_set(self, block_id, item_id):
+        # type: (int, int) -> bool
 
         ret = self.get_object(block_id, item_id)
 
@@ -398,6 +426,7 @@ class ProgramHelper(object):
         return True
 
     def is_polygon_set(self, block_id, item_id):
+        # type: (int, int) -> bool
 
         ret = self.get_polygon(block_id, item_id)
 
@@ -408,6 +437,7 @@ class ProgramHelper(object):
         return True
 
     def program_learned(self):
+        # type: () -> bool
 
         blocks = self.get_block_ids()
 
@@ -419,6 +449,7 @@ class ProgramHelper(object):
         return True
 
     def block_learned(self, block_id):
+        # type: (int) -> bool
 
         items = self.get_items_ids(block_id)
 
@@ -430,6 +461,7 @@ class ProgramHelper(object):
         return True
 
     def item_takes_params_from_ref(self, block_id, item_id):
+        # type: (int, int) -> bool
         """Returns True if ref instruction params have to be set first"""
 
         msg = self.get_item_msg(block_id, item_id)
@@ -449,6 +481,7 @@ class ProgramHelper(object):
         return False
 
     def ref_params_learned(self, block_id, item_id):
+        # type: (int, int) -> bool
 
         if not self.item_takes_params_from_ref(block_id, item_id):
             raise ProgramHelperException("Item does not take any param from reference.")
@@ -470,6 +503,7 @@ class ProgramHelper(object):
         return True
 
     def ref_pick_learned(self, block_id, item_id):
+        # type: (int, int) -> Any[bool, None]
 
         msg = self.get_item_msg(block_id, item_id)
 
@@ -490,6 +524,7 @@ class ProgramHelper(object):
         return len(msg.object) == 0 and len(msg.pose) == 0 and len(msg.polygon) == 0
 
     def item_learned(self, block_id, item_id):
+        # type: (int, int) -> Any[bool, None]
 
         if not self.item_requires_learning(block_id, item_id):
             return None

@@ -2,14 +2,15 @@ import rospy
 from moveit_commander import PlanningSceneInterface
 from art_utils import ObjectHelper, ArtApiHelper
 from geometry_msgs.msg import PoseStamped
-from std_msgs.msg import Bool
-from art_msgs.msg import CollisionObjects
+from std_msgs.msg import Bool, Header
+from art_msgs.msg import CollisionObjects, CollisionPrimitive, ObjInstance, ObjectType
 import uuid
 from threading import RLock
 from shape_msgs.msg import SolidPrimitive
 from art_utils import array_from_param
 from tf import TransformListener
 import tf
+from typing import List, Tuple
 
 """
 TODO
@@ -60,11 +61,13 @@ class CollisionEnv(object):
         self.paused = False
 
     def start(self):
+        # type: () -> None
 
         self.ready = True
         rospy.loginfo("Ready")
 
     def load_from_db(self):
+        # type: () -> None
 
         for prim in self.api.get_collision_primitives(self.setup):
 
@@ -72,6 +75,7 @@ class CollisionEnv(object):
             self.add_primitive(prim)
 
     def save_primitive(self, name):
+        # type: (str) -> None
 
         with self.lock:
 
@@ -82,6 +86,7 @@ class CollisionEnv(object):
             self.api.add_collision_primitive(p)
 
     def save_primitives(self):
+        # type: () -> None
 
         with self.lock:
 
@@ -90,6 +95,7 @@ class CollisionEnv(object):
                 self.save_primitive(name)
 
     def set_primitive_pose(self, name, ps):
+        # type: (str, PoseStamped) -> None
 
         with self.lock:
 
@@ -100,6 +106,7 @@ class CollisionEnv(object):
             self.pub_artificial()
 
     def add_primitive(self, p):
+        # type: (CollisionPrimitive) -> None
 
         with self.lock:
 
@@ -108,6 +115,7 @@ class CollisionEnv(object):
             self.pub_artificial()
 
     def pub_artificial(self):
+        # type: () -> None
 
         msg = CollisionObjects()
 
@@ -138,6 +146,7 @@ class CollisionEnv(object):
         self.paused_pub.publish(val)
 
     def remove_name(self, name):
+        # type: (str) -> bool
 
         with self.lock:
 
@@ -156,6 +165,7 @@ class CollisionEnv(object):
         return True
 
     def clear_all(self, permanent=True):
+        # type: (bool) -> None
 
         with self.lock:
 
@@ -175,12 +185,14 @@ class CollisionEnv(object):
             rospy.logwarn("Failed to remove from permanent storage")
 
     def reload(self):
+        # type: () -> None
 
         self.clear_all(permanent=False)
         self.load_from_db()
         self.pub_artificial()
 
     def _generate_name(self):
+        # type: () -> str
 
         # as we use only part of uuid, there might be collisions...
         while True:
@@ -192,6 +204,7 @@ class CollisionEnv(object):
         return name
 
     def set_det_pose(self, name, ps):
+        # type: (str, PoseStamped) -> None
 
         object_type = self.api.get_object_type(self.oh.objects[name].object_type)
 
@@ -199,6 +212,7 @@ class CollisionEnv(object):
             self.add_detected(name, ps, object_type)
 
     def clear_det_on_table(self, inv=False, ignore=None):
+        # type: (bool, List[str]) -> List[str]
 
         if ignore is None:
             ignore = []
@@ -224,6 +238,7 @@ class CollisionEnv(object):
         return ret
 
     def is_ignored(self, name):
+        # type: (str) -> bool
 
         for ip in self.ignored_prefixes:
             if name.startswith(ip):
@@ -261,6 +276,7 @@ class CollisionEnv(object):
                     pass
 
     def object_cb(self, evt, h, inst):
+        # type: (int, Header, ObjInstance) -> None
 
         if self.paused or not self.ready:
             return
@@ -291,18 +307,21 @@ class CollisionEnv(object):
                     self.clear_detected(inst.object_id)
 
     def add_detected(self, name, ps, object_type):
+        # type: (str, PoseStamped, ObjectType) -> None
 
         with self.lock:
 
             self.ps.add_box(name, ps, object_type.bbox.dimensions)
 
     def clear_detected(self, name):
+        # type: (str) -> None
 
         with self.lock:
 
             self.ps.remove_world_object(name)
 
     def clear_all_det(self, ignore=None):
+        # type: (List[str]) -> List[str]
 
         if ignore is None:
             ignore = []
@@ -322,6 +341,7 @@ class CollisionEnv(object):
         return ret
 
     def get_attached(self, transform_to_world=True):
+        # type: (bool) -> List[Tuple[str, PoseStamped, SolidPrimitive]]
         """
         keep in mind - attached objects might not be detected
         """

@@ -1,7 +1,10 @@
 from visualization_msgs.msg import InteractiveMarkerControl, InteractiveMarker, Marker
+from geometry_msgs.msg import PoseStamped
+from typing import List, Tuple, Iterable
 
 
 def axis_control(name, q):
+    # type: (List[float]) -> InteractiveMarkerControl
 
     cr = InteractiveMarkerControl()
     cr.orientation.x = q[0]
@@ -13,6 +16,7 @@ def axis_control(name, q):
 
 
 def rotate_axis_control(name, q):
+    # type: (List[float]) -> InteractiveMarkerControl
 
     cr = axis_control(name, q)
     cr.interaction_mode = InteractiveMarkerControl.ROTATE_AXIS
@@ -20,6 +24,7 @@ def rotate_axis_control(name, q):
 
 
 def move_axis_control(name, q):
+    # type: (List[float]) -> InteractiveMarkerControl
 
     cr = axis_control(name, q)
     cr.interaction_mode = InteractiveMarkerControl.MOVE_AXIS
@@ -27,6 +32,7 @@ def move_axis_control(name, q):
 
 
 def make_def(p, color=(0.5, 0.5, 0.5), desc=None):
+    # type: (PoseStamped, Iterable[float, float, float], str) -> InteractiveMarker
 
     im = InteractiveMarker()
     im.header.frame_id = p.pose.header.frame_id
