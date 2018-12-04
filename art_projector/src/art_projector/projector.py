@@ -14,7 +14,7 @@ from std_msgs.msg import Bool
 from std_srvs.srv import Trigger, TriggerResponse
 import message_filters
 from image_geometry import PinholeCameraModel
-from geometry_msgs.msg import PointStamped, Pose, PoseArray
+from geometry_msgs.msg import Pose, PoseArray
 import tf
 from art_utils import array_from_param
 from art_projected_gui.gui import SceneViewer
@@ -69,8 +69,6 @@ class Projector(SceneViewer):
         self.screen = rospy.get_param('~screen_number', 0)
         self.camera_image_topic = rospy.get_param(
             '~camera_image_topic', 'kinect2/hd/image_color_rect')
-        self.camera_depth_topic = rospy.get_param(
-            '~camera_depth_topic', 'kinect2/hd/image_depth_rect')
         self.camera_info_topic = rospy.get_param(
             '~camera_info_topic', 'kinect2/hd/camera_info')
 
@@ -238,7 +236,7 @@ class Projector(SceneViewer):
 
         return
 
-    def calibrate(self, image, info, depth):
+    def calibrate(self, image, info):
 
         model = PinholeCameraModel()
         model.fromCameraInfo(info)
@@ -249,13 +247,6 @@ class Projector(SceneViewer):
             print(e)
             return False
 
-        try:
-            cv_depth = self.bridge.imgmsg_to_cv2(depth)
-        except CvBridgeError as e:
-            print(e)
-            return False
-
-        cv_depth = cv2.medianBlur(cv_depth, 5)
         cv_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
 
         ret, corners = cv2.findChessboardCorners(
@@ -278,38 +269,26 @@ class Projector(SceneViewer):
         ppp.header.stamp = rospy.Time.now()
         ppp.header.frame_id = self.world_frame
 
+        pos, rot = self.tfl.lookupTransform(self.world_frame, image.header.frame_id, rospy.Time(0))
+        trans_mat = tf.transformations.translation_matrix(pos)
+        rot_mat = tf.transformations.quaternion_matrix(rot)
+        cam2world = np.dot(trans_mat, rot_mat)
+
+        cam_origin = tf.transformations.translation_from_matrix(cam2world)
+
         for c in corners:
 
-            pt = list(model.projectPixelTo3dRay((c[0], c[1])))
-            pt[:] = [x / pt[2] for x in pt]
+            ray = np.concatenate((np.array(model.projectPixelTo3dRay((c[0], c[1]))), np.array([1.0])))
+            world_ray = np.dot(cam2world, ray)[:3]
 
-            # depth image is noisy - let's make mean of few pixels
-            da = []
-            for x in range(int(c[0]) - 2, int(c[0]) + 3):
-                for y in range(int(c[1]) - 2, int(c[1]) + 3):
-                    da.append(cv_depth[y, x] / 1000.0)
+            world_ray_cam_rel = world_ray - cam_origin
 
-            d = np.mean(da)
-            pt[:] = [x * d for x in pt]
-
-            ps = PointStamped()
-            ps.header.stamp = rospy.Time(0)
-            ps.header.frame_id = image.header.frame_id
-            ps.point.x = pt[0]
-            ps.point.y = pt[1]
-            ps.point.z = pt[2]
-
-            # transform 3D point from camera into the world coordinates
-            try:
-                ps = self.tfl.transformPoint(self.world_frame, ps)
-            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-                rospy.logerr("Can't get transform")
-                return False
+            s = cam_origin[2] / -world_ray_cam_rel[2]
 
             pp = Pose()
-            pp.position.x = ps.point.x
-            pp.position.y = ps.point.y
-            pp.position.z = ps.point.z
+            pp.position.x = cam_origin[0] + world_ray_cam_rel[0] * s
+            pp.position.y = cam_origin[1] + world_ray_cam_rel[1] * s
+            pp.position.z = 0.0
             pp.orientation.x = 0
             pp.orientation.y = 0
             pp.orientation.z = 0
@@ -318,7 +297,7 @@ class Projector(SceneViewer):
             ppp.poses.append(pp)
 
             # store x,y -> here we assume that points are 2D (on tabletop)
-            points.append([self.rpm * ps.point.x, self.rpm * ps.point.y])
+            points.append([self.rpm * pp.position.x, self.rpm * pp.position.y])
 
         self.corners_pub.publish(ppp)
 
@@ -361,7 +340,7 @@ class Projector(SceneViewer):
             sub.sub.unregister()
         self.ts = None
 
-    def sync_cb(self, image, cam_info, depth):
+    def sync_cb(self, image, cam_info):
 
         self.timeout_timer.shutdown()
 
@@ -373,7 +352,7 @@ class Projector(SceneViewer):
 
         self.emit(QtCore.SIGNAL('show_chessboard'))
 
-        if self.calibrate(image, cam_info, depth):
+        if self.calibrate(image, cam_info):
 
             rospy.loginfo('Calibrated')
 
@@ -436,15 +415,13 @@ class Projector(SceneViewer):
     def tfl_delay_timer_cb(self, evt=None):
 
         rospy.loginfo('Subscribing to camera topics: ' + str(
-            [self.camera_image_topic, self.camera_info_topic, self.camera_depth_topic]))
+            [self.camera_image_topic, self.camera_info_topic]))
 
         self.subs = []
         self.subs.append(message_filters.Subscriber(
             self.camera_image_topic, Image))
         self.subs.append(message_filters.Subscriber(
             self.camera_info_topic, CameraInfo))
-        self.subs.append(message_filters.Subscriber(
-            self.camera_depth_topic, Image))
 
         self.ts = message_filters.TimeSynchronizer(self.subs, 10)
         self.ts.registerCallback(self.sync_cb)
