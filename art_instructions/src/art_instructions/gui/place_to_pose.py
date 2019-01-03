@@ -129,10 +129,12 @@ class PlaceToPoseLearn(PlaceToPose):
                                 object_id,
                                 place_cb=self.ui.place_pose_changed,  # TODO place_cb should be set in add_place?
                                 fixed=not self.editable)
-                    else:
+                    elif self.editable:
 
-                        self.ui.add_place(self.get_name(self.block_id, it_id), self.ui.get_def_pose(
+                        place = self.ui.add_place(self.get_name(self.block_id, it_id), self.ui.get_def_pose(
                         ), object_type, object_id, place_cb=self.ui.place_pose_changed, fixed=not self.editable)
+
+                        place.get_attention()
 
                     continue
 

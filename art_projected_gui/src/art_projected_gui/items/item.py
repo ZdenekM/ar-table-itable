@@ -25,6 +25,9 @@ class Item(QtGui.QGraphicsItem):
         self.last_pointed = rospy.Time(0)
         self.position = [x, y, z]  # position in meters
 
+        self.tl = None
+        self.a = None
+
         self.setVisible(True)
         # self.setAcceptHoverEvents(True)
         self.setEnabled(True)
@@ -32,6 +35,21 @@ class Item(QtGui.QGraphicsItem):
         self.setCacheMode(QtGui.QGraphicsItem.ItemCoordinateCache)
 
         self.set_pos(x, y, z)
+
+    def get_attention(self):
+
+        self.tl = QtCore.QTimeLine(3000)
+        self.tl.setCurveShape(QtCore.QTimeLine.LinearCurve)
+        self.tl.setLoopCount(1000)
+        self.a = QtGui.QGraphicsItemAnimation()
+        self.a.setItem(self)
+        self.a.setTimeLine(self.tl)
+
+        self.a.setScaleAt(0.1, 1.1, 1.1)
+        self.a.setScaleAt(0.2, 0.9, 0.9)
+        self.a.setScaleAt(0.3, 1.0, 1.0)
+
+        self.tl.start()
 
     def get_font_size(self, f=1.0):
 
@@ -129,6 +147,11 @@ class Item(QtGui.QGraphicsItem):
             self.setVisible(state)
 
     def hover_changed(self):
+
+        if self.a and self.tl:
+
+            self.tl.stop()
+            self.a.clear()
 
         self.update()
 

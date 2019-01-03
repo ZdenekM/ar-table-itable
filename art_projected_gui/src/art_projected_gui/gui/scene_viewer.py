@@ -86,7 +86,7 @@ class SceneViewer(QtGui.QWidget):
 
             # skip this frame if there is another one in buffer
             if self.tcpSocket.bytesAvailable() > 0:
-                rospy.loginfo("Frame dropped")
+                rospy.logdebug("Frame dropped")
                 continue
 
             # 16ms

@@ -168,6 +168,8 @@ class ObjectItem(Item):
 
     def hover_changed(self):
 
+        super(ObjectItem, self).hover_changed()
+
         self.update_text()
         self.update()
 

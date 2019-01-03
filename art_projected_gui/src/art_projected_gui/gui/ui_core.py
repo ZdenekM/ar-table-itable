@@ -153,6 +153,8 @@ class UICore(QtCore.QObject):
 
             obj.set_selected(True)
 
+        return obj
+
     def remove_object(self, object_id):
         """Removes ObjectItem with given object_id from the scene."""
 
@@ -225,7 +227,7 @@ class UICore(QtCore.QObject):
                   object_id=None, place_cb=None, fixed=False, dashed=False):
 
         # TODO check frame_id in pose_stamped and transform if needed
-        PlaceItem(
+        return PlaceItem(
             self.scene,
             caption,
             pose_stamped.pose.position.x,
@@ -242,7 +244,7 @@ class UICore(QtCore.QObject):
     def add_polygon(self, caption, obj_coords=[], poly_points=[],
                     polygon_changed=None, fixed=False):
 
-        PolygonItem(
+        return PolygonItem(
             self.scene,
             caption,
             obj_coords,
@@ -267,7 +269,7 @@ class UICore(QtCore.QObject):
             square_changed=None,
             fixed=False):
 
-        SquareItem(
+        return SquareItem(
             self.scene,
             caption,
             min_x,
