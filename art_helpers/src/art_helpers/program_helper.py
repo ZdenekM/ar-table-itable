@@ -469,7 +469,7 @@ class ProgramHelper(object):
 
         return True
 
-    def ref_pick_learned(self, block_id, item_id):
+    def get_ref_pick_item_msg(self, block_id, item_id):
 
         msg = self.get_item_msg(block_id, item_id)
 
@@ -479,9 +479,14 @@ class ProgramHelper(object):
         for ref in msg.ref_id:
 
             if self.get_item_type(block_id, ref) in self.ih.properties.pick:
-                return self.item_learned(block_id, ref), ref
+                return self.get_item_msg(block_id, ref)
 
         raise ProgramHelperException("Could not find pick item in references.")
+
+    def ref_pick_learned(self, block_id, item_id):
+
+        ref_msg = self.get_ref_pick_item_msg(block_id, item_id)
+        return self.item_learned(block_id, ref_msg.id), ref_msg.id
 
     def item_has_nothing_to_set(self, block_id, item_id):
 

@@ -66,6 +66,15 @@ class ArtRobotArmHelper(object):
         self.idx = parameters.get("idx", None)
         self._name = parameters.get("name", {})
 
+        # TODO wouldn't it be better to just do transform from gripper_link to world frame?
+        self._gripper_pose_sub = rospy.Subscriber(
+            '/art/robot/' +
+    self.arm_id +
+            '/gripper/pose',
+            PoseStamped,
+            self._gripper_pose_cb)
+        self._gripper_pose = None
+
         if not self._name:
             rospy.logwarn("Arm " + self.arm_id + " has not readable name!")
 
@@ -74,6 +83,10 @@ class ArtRobotArmHelper(object):
 
         if not self.capabilities:
             rospy.logwarn("Arm " + self.arm_id + " has no capabilities.")
+
+    def _gripper_pose_cb(self, msg):
+
+        self._gripper_pose = msg
 
     def name(self, loc):
 
@@ -84,12 +97,7 @@ class ArtRobotArmHelper(object):
 
     def get_pose(self):
 
-        try:
-            return rospy.wait_for_message('/art/robot/' + self.arm_id + '/gripper/pose', PoseStamped, timeout=1)
-        except rospy.ROSException as e:
-            rospy.logerr(str(e))
-
-        return None
+        return self._gripper_pose
 
     def pick_place_enabled(self):
         return "pick_place" in self.capabilities

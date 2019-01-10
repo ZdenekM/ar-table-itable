@@ -35,6 +35,7 @@ class ObjectItem(Item):
         self.object_type = object_type
         self.inflate = 0.01
         self.def_color = QtCore.Qt.gray
+        self.ext_color = None
         self.lx = 0
         self.ly = 0
         self.dashed = dashed
@@ -59,6 +60,11 @@ class ObjectItem(Item):
 
         self._update_desc_pos()
         self.setZValue(50)
+
+    def set_ext_color(self, color=None):
+
+        self.ext_color = color
+        self.update()
 
     def set_color(self, color=QtCore.Qt.gray):
 
@@ -199,7 +205,12 @@ class ObjectItem(Item):
         line = QtCore.Qt.SolidLine
         if self.dashed:
             line = QtCore.Qt.DashLine
-        pen = QtGui.QPen(self.def_color, 5, line, QtCore.Qt.RoundCap)
+
+        color = self.def_color
+        if self.ext_color:
+            color = self.ext_color
+
+        pen = QtGui.QPen(color, 5, line, QtCore.Qt.RoundCap)
 
         if self.selected:
 

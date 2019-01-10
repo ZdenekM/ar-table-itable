@@ -117,6 +117,9 @@ class UICoreRos(UICore):
 
         self.visualizing = False
 
+        self.robot_look_at_default_srv = rospy.ServiceProxy(
+            '/art/robot/look_at/default', Trigger)
+
         self.program_pause_srv = rospy.ServiceProxy(
             '/art/brain/program/pause', Trigger)
 
@@ -916,14 +919,6 @@ class UICoreRos(UICore):
         ps.pose.orientation.w = 1.0
         return ps
 
-    def place_pose_changed(self, place):
-
-        if self.program_vis.editing_item:
-
-            self.program_vis.set_place_pose(place)
-            self.state_manager.update_program_item(self.ph.get_program_id(
-            ), self.program_vis.block_id, self.program_vis.get_current_item())
-
     def is_template(self):
 
         return self.template
@@ -942,6 +937,12 @@ class UICoreRos(UICore):
                    str(prog.header.id), temp=True)
 
         self.last_edited_prog_id = prog.header.id
+
+        # TODO temporarily.. find better solution.. look with the robot to default state
+        try:
+            self.robot_look_at_default_srv()
+        except rospy.ServiceException as e:
+            print "Service call failed: %s" % e
 
         resp = None
         try:

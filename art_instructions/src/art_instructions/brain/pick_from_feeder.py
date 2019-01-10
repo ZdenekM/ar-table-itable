@@ -81,6 +81,9 @@ class PickFromFeederFSM(BrainFSM):
             self.fsm.error(severity=severity,
                            error=error)
 
+        else:
+            self.brain.forearm_enable_srv_client.call()
+
     def state_learning_pick_from_feeder_run(self, event):
         rospy.logdebug('Current state: state_learning_pick_from_feeder_run')
         instruction = self.brain.state_manager.state.program_current_item  # type: ProgramItem
@@ -99,6 +102,8 @@ class PickFromFeederFSM(BrainFSM):
                 str(error))
             self.fsm.error(severity=severity,
                            error=error)
+
+        self.brain.forearm_disable_srv_client.call()
 
     def pick_object_from_feeder(self, instruction):
 
