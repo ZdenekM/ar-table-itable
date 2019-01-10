@@ -239,6 +239,9 @@ class ArtBrainRobotInterface:
                 arm.get_ready()
         return None, None, None
 
+    def get_ready(self):
+        self.arms_get_ready()
+
     def arm_prepare_for_interaction(self, arm_id=None):
         if arm_id is None:
             for arm in self._arms:  # type: ArtGripper
