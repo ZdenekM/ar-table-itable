@@ -1,6 +1,6 @@
 import rospy
 from moveit_commander import PlanningSceneInterface
-from art_utils import ObjectHelper, ArtApiHelper
+from art_utils import ObjectHelper, ArtApiHelper, ArtApiException
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Bool
 from art_msgs.msg import CollisionObjects
@@ -8,6 +8,8 @@ import uuid
 from threading import RLock
 from shape_msgs.msg import SolidPrimitive
 from art_utils import array_from_param
+from tf import TransformListener
+import tf
 
 """
 TODO
@@ -33,10 +35,13 @@ class CollisionEnv(object):
         self.setup = setup
         self.world_frame = world_frame
 
+        self.tf_listener = TransformListener()
+
         self.api = ArtApiHelper()
         rospy.loginfo("Waiting for DB API")
         self.api.wait_for_db_api()
         self.ignored_prefixes = array_from_param("~ignored_prefixes")
+
         rospy.loginfo("Will ignore following prefixes: " + str(self.ignored_prefixes))
 
         self.lock = RLock()
@@ -108,6 +113,15 @@ class CollisionEnv(object):
         msg = CollisionObjects()
 
         for v in self.artificial_objects.values():
+            # transform all collision primitives into world frame (= marker)
+            if v.pose.header.frame_id != self.world_frame:
+                try:
+                    self.tf_listener.waitForTransform(
+                        v.pose.header.frame_id, self.world_frame, rospy.Time(0), rospy.Duration(1.0))
+                    v.pose = self.tf_listener.transformPose(self.world_frame, v.pose)
+                except tf.Exception as e:
+                    rospy.logwarn("Failed to transform artificial object: " + str(e))
+                    continue
 
             msg.primitives.append(v)
 
@@ -158,8 +172,11 @@ class CollisionEnv(object):
             self.artificial_objects = {}
             self.pub_artificial()
 
-        if permanent and not self.api.clear_collision_primitives(self.setup):
-            rospy.logwarn("Failed to remove from permanent storage")
+        try:
+            if permanent and not self.api.clear_collision_primitives(self.setup):
+                rospy.logwarn("Failed to remove from permanent storage")
+        except ArtApiException as e:
+            rospy.logerr(str(e))
 
     def reload(self):
 
@@ -231,7 +248,7 @@ class CollisionEnv(object):
 
                 if name not in self.artificial_objects and name not in self.oh.objects and not self.is_ignored(name):
 
-                    rospy.loginfo("Removing outdated detected object: " + name)
+                    rospy.loginfo("Removing outdated object: " + name)
                     self.clear_detected(name)
 
             # restore artificial objects if they are lost somehow (e.g. by restart  of MoveIt!)
@@ -306,4 +323,42 @@ class CollisionEnv(object):
                 ret.append(name)
 
         rospy.loginfo("Removed " + str(len(ret)) + " detected objects.")
+        return ret
+
+    def get_attached(self, transform_to_world=True):
+        """
+        keep in mind - attached objects might not be detected
+        """
+
+        ret = []
+
+        with self.lock:
+
+            ao = self.ps.get_attached_objects()
+
+        for k, v in ao.iteritems():
+
+            if len(v.object.primitives) != 1 or len(v.object.primitive_poses) != 1:
+                rospy.logwarn("Unsupported type of attached object: " + k)
+                continue
+
+            if v.object.primitives[0].type != SolidPrimitive.BOX:
+                rospy.logwarn("Only box-like attached objects are supported so far.")
+                continue
+
+            ps = PoseStamped()
+            ps.header = v.object.header
+            ps.pose = v.object.primitive_poses[0]
+
+            if transform_to_world and ps.header.frame_id != self.world_frame:
+                try:
+                    self.tf_listener.waitForTransform(
+                        ps.header.frame_id, self.world_frame, ps.header.stamp, rospy.Duration(1.0))
+                    ps = self.tf_listener.transformPose(self.world_frame, ps)
+                except tf.Exception as e:
+                    rospy.logwarn("Failed to transform attached object: " + str(e))
+                    continue
+
+            ret.append((k, ps, v.object.primitives[0]))
+
         return ret
