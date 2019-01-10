@@ -70,6 +70,19 @@ class PickFromFeederFSM(BrainFSM):
     def state_learning_pick_from_feeder(self, event):
         rospy.logdebug('Current state: state_learning_pick_from_feeder')
 
+        instruction = self.brain.state_manager.state.program_current_item
+        pick_pose, _ = self.brain.ph.get_pose(self.brain.block_id, instruction.id)
+        if pick_pose is None:
+            self.fsm.error(severity=ArtBrainErrorSeverities.ERROR,
+                           error=ArtBrainErrors.ERROR_PICK_POSE_NOT_SELECTED)
+        else:
+            pick_pose = pick_pose[0]
+        arm_id = self.brain.robot.select_arm_for_pick_from_feeder(
+            pick_pose, self.brain.tf_listener)
+        severity, error, arm_id = self.brain.robot.move_arm_to_pose(
+            pick_pose, arm_id, picking=True)
+        # TODO what to do if robot failed to move?
+
         severity, error, arm_id = self.brain.robot.arm_prepare_for_interaction()
         if error is not None:
             rospy.logerr(
