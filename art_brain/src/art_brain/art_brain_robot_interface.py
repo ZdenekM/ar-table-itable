@@ -1,10 +1,11 @@
 from art_gripper import ArtGripper
-from brain_utils import ArtBrainErrors, ArtBrainErrorSeverities
+from brain_utils import ArtBrainErrors, ArtBrainErrorSeverities, ArtBrainUtils
 import abc
 import rospy
 from art_msgs.msg import PickPlaceGoal
 from std_srvs.srv import TriggerResponse, Trigger
 from art_msgs.srv import ReinitArms, ReinitArmsResponse, ReinitArmsRequest
+from geometry_msgs.msg import PoseStamped
 from actionlib.simple_action_client import SimpleGoalState
 
 
@@ -16,6 +17,17 @@ class ArtBrainRobotInterface:
         self._arms = []
         self.halted = False
         self.rh = robot_helper
+
+        look_at_topic = self.rh.get_look_at_topic_name()
+        self.look_at_pub = None
+        if look_at_topic:
+            self.look_at_pub = rospy.Publisher(look_at_topic, PoseStamped, queue_size=1)
+
+        look_at_default_service = self.rh.get_look_at_default_service_name()
+        self.look_at_default_client = None
+        if look_at_default_service:
+            self.look_at_pub = ArtBrainUtils.create_service_client(look_at_default_service, Trigger)
+
         for arm in self.rh.arms:
 
             self._arms.append(ArtGripper(arm.arm_id,
