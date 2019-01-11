@@ -158,6 +158,10 @@ class TrackedObject:
         fp = atan2(ap[1], ap[0])
         fy = atan2(ay[1], ay[0])
 
+        if inst.on_table and ground_objects_on_table:
+            fp = 0
+            fr = 0
+
         cur_rpy = [fr, fp, fy]
 
         q_arr = transformations.quaternion_from_euler(*cur_rpy)
@@ -201,7 +205,6 @@ class TrackedObject:
 # "tracking" of static objects
 class ArtSimpleTracker:
     def __init__(self, target_frame="marker"):
-
         self.target_frame = target_frame
         self.tfl = tf.TransformListener()
         self.lock = threading.Lock()

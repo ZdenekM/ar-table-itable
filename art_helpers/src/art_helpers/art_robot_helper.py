@@ -18,6 +18,7 @@ class ArtRobotHelper(object):
         self.robot_ns = robot_ns
         self.arms = []
         self.robot_parameters = rospy.get_param(self.robot_ns, None)
+        self.capabilities = [cap for cap in self.robot_parameters.get('capabilities', {})]
         if self.robot_parameters is None:
             raise RobotParametersNotOnParameterServer
 
@@ -43,6 +44,9 @@ class ArtRobotHelper(object):
             if arm.arm_id == arm_id:
                 return arm
 
+    def look_at_enabled(self):
+        return "look_at" in self.capabilities
+
     def get_emergency_stop_service_name(self):
         return self.robot_ns + "/stop"
 
@@ -51,6 +55,12 @@ class ArtRobotHelper(object):
 
     def get_prepare_for_calibration_service_name(self):
         return self.robot_ns + "/prepare_for_calibration"
+
+    def get_look_at_topic_name(self):
+        return self.robot_ns + "/look_at" if self.look_at_enabled() else None
+
+    def get_look_at_default_service_name(self):
+        return self.robot_ns + "/look_at/default" if self.look_at_enabled() else None
 
 
 class ArtRobotArmHelper(object):
