@@ -5,7 +5,7 @@ import rospy
 from art_msgs.msg import PickPlaceGoal
 from std_srvs.srv import TriggerResponse, Trigger
 from art_msgs.srv import ReinitArms, ReinitArmsResponse, ReinitArmsRequest
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PointStamped
 from actionlib.simple_action_client import SimpleGoalState
 
 
@@ -21,12 +21,12 @@ class ArtBrainRobotInterface:
         look_at_topic = self.rh.get_look_at_topic_name()
         self.look_at_pub = None
         if look_at_topic:
-            self.look_at_pub = rospy.Publisher(look_at_topic, PoseStamped, queue_size=1)
+            self.look_at_pub = rospy.Publisher(look_at_topic, PointStamped, queue_size=1)
 
         look_at_default_service = self.rh.get_look_at_default_service_name()
         self.look_at_default_client = None
         if look_at_default_service:
-            self.look_at_pub = ArtBrainUtils.create_service_client(look_at_default_service, Trigger)
+            self.look_at_default_srv = ArtBrainUtils.create_service_client(look_at_default_service, Trigger)
 
         for arm in self.rh.arms:
 
@@ -385,3 +385,14 @@ class ArtBrainRobotInterface:
 
     def get_arm_holding_object(self, arm_id):
         return self.get_arm_by_id(arm_id).holding_object
+
+    def look_at(self, x, y, z, frame_id="marker"):
+        point = PointStamped()
+        point.header.frame_id = frame_id
+        point.point.x = x
+        point.point.y = y
+        point.point.z = z
+        self.look_at_pub.publish(point)
+
+    def look_at_point(self, point, frame_id="marker"):
+        self.look_at(point.x, point.y, point.z, frame_id)
