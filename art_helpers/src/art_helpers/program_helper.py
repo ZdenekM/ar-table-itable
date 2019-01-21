@@ -2,7 +2,7 @@
 
 import rospy
 from art_msgs.msg import Program
-from geometry_msgs.msg import Pose, Polygon
+from geometry_msgs.msg import Pose, Polygon, PoseStamped
 from art_helpers import InstructionsHelper
 
 
@@ -372,6 +372,25 @@ class ProgramHelper(object):
                 continue
 
         raise ProgramHelperException("'polygon' not found in item, nor in any referenced items.")
+
+    def get_polygon_centroid(self, block_id, item_id):
+
+        polygon = self.get_polygon(block_id, item_id)[0][0]
+
+        x_sum = y_sum = z_sum = 0
+
+        for point in polygon.polygon.points:
+            x_sum += point.x
+            y_sum += point.y
+            z_sum += point.z
+
+        pose = PoseStamped()
+        pose.pose.position.x = x_sum / len(polygon.polygon.points)
+        pose.pose.position.y = y_sum / len(polygon.polygon.points)
+        pose.pose.position.z = z_sum / len(polygon.polygon.points)
+        pose.header.frame_id = polygon.header.frame_id
+
+        return pose
 
     def is_pose_set(self, block_id, item_id, idx=None):
 
