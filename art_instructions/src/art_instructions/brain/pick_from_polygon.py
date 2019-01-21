@@ -2,6 +2,7 @@ from art_instructions.brain import BrainFSM, BrainInstruction
 from transitions import State
 import rospy
 from art_brain import ArtBrainErrors, ArtBrainErrorSeverities, ArtBrainUtils
+from geometry_msgs.msg import Pose
 
 
 class PickFromPolygon(BrainInstruction):
@@ -26,6 +27,9 @@ class PickFromPolygonFSM(BrainFSM):
         State(name='learning_pick_from_polygon_run', on_enter=[
             'check_robot_in', 'learning_load_block_id', 'state_learning_pick_from_polygon_run'],
             on_exit=['check_robot_out']),
+        State(name='learning_pick_from_polygon_activated', on_enter=[
+            'check_robot_in', 'learning_load_block_id', 'state_learning_pick_from_polygon_activated'],
+            on_exit=['check_robot_out']),
     ]
 
     transitions = [
@@ -37,13 +41,17 @@ class PickFromPolygonFSM(BrainFSM):
         ('error', 'learning_pick_from_polygon', 'learning_step_error'),
         ('pick_from_polygon_run', 'learning_run', 'learning_pick_from_polygon_run'),
         ('done', 'learning_pick_from_polygon_run', 'learning_run'),
-        ('error', 'learning_pick_from_polygon_run', 'learning_step_error')
+        ('error', 'learning_pick_from_polygon_run', 'learning_step_error'),
+        ('pick_from_polygon_activated', 'learning_run', 'learning_pick_from_polygon_activated'),
+        ('done', 'learning_pick_from_polygon_activated', 'learning_run'),
+        ('error', 'learning_pick_from_polygon_activated', 'learning_step_error')
     ]
 
     state_functions = [
         'state_pick_from_polygon',
         'state_learning_pick_from_polygon',
-        'state_learning_pick_from_polygon_run'
+        'state_learning_pick_from_polygon_run',
+        'state_learning_pick_from_polygon_activated'
     ]
 
     def run(self):
@@ -54,6 +62,9 @@ class PickFromPolygonFSM(BrainFSM):
 
     def learning_run(self):
         self.fsm.pick_from_polygon_run()
+
+    def learning_activated(self):
+        self.fsm.pick_from_polygon_activated()
 
     def state_pick_from_polygon(self, event):
         rospy.logdebug('Current state: state_pick_from_polygon')
@@ -70,6 +81,19 @@ class PickFromPolygonFSM(BrainFSM):
         rospy.logdebug('Current state: state_learning_pick_from_polygon_run')
         instruction = self.brain.state_manager.state.program_current_item  # type: ProgramItem
         self.pick_object_from_polygon(instruction, update_state_manager=False)
+
+    def state_learning_pick_from_polygon_activated(self, event):
+        rospy.logdebug('Current state: state_learning_pick_from_polygon_activated')
+        instruction = self.brain.state_manager.state.program_current_item
+        if self.brain.robot.rh.look_at_enabled() and self.brain.ph.is_polygon_set(self.brain.block_id, instruction.id):
+
+            polygon_centroid = self.brain.ph.get_polygon_centroid(self.brain.block_id, instruction.id)
+
+            self.brain.robot.look_at_point(polygon_centroid.pose.position,
+                                           polygon_centroid.header.frame_id if polygon_centroid.header.frame_id
+                                           else "marker")
+
+        self.fsm.done()
 
     def pick_object_from_polygon(self, instruction, update_state_manager=True):
 

@@ -2,7 +2,7 @@ from art_instructions.brain import BrainFSM, BrainInstruction
 from transitions import State
 from art_brain import ArtBrainErrors, ArtBrainErrorSeverities, ArtBrainUtils
 import rospy
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, PointStamped
 import math
 
 
@@ -26,6 +26,9 @@ class PickFromFeederFSM(BrainFSM):
         State(name='learning_pick_from_feeder_run', on_enter=[
             'check_robot_in', 'learning_load_block_id', 'state_learning_pick_from_feeder_run'],
             on_exit=['check_robot_out']),
+        State(name='learning_pick_from_feeder_activated', on_enter=[
+            'check_robot_in', 'learning_load_block_id', 'state_learning_pick_from_feeder_activated'],
+            on_exit=['check_robot_out']),
         State(name='learning_pick_from_feeder', on_enter=[
             'check_robot_in', 'learning_load_block_id', 'state_learning_pick_from_feeder'],
             on_exit=['check_robot_out', 'state_learning_pick_from_feeder_exit'])
@@ -40,14 +43,18 @@ class PickFromFeederFSM(BrainFSM):
         ('error', 'learning_pick_from_feeder', 'learning_step_error'),
         ('pick_from_feeder_run', 'learning_run', 'learning_pick_from_feeder_run'),
         ('done', 'learning_pick_from_feeder_run', 'learning_run'),
-        ('error', 'learning_pick_from_feeder_run', 'learning_step_error')
+        ('error', 'learning_pick_from_feeder_run', 'learning_step_error'),
+        ('pick_from_feeder_activated', 'learning_run', 'learning_pick_from_feeder_activated'),
+        ('done', 'learning_pick_from_feeder_activated', 'learning_run'),
+        ('error', 'learning_pick_from_feeder_activated', 'learning_step_error')
     ]
 
     state_functions = [
         'state_pick_from_feeder',
         'state_learning_pick_from_feeder_run',
         'state_learning_pick_from_feeder',
-        'state_learning_pick_from_feeder_exit'
+        'state_learning_pick_from_feeder_exit',
+        'state_learning_pick_from_feeder_activated'
     ]
 
     def run(self):
@@ -58,6 +65,9 @@ class PickFromFeederFSM(BrainFSM):
 
     def learning_run(self):
         self.fsm.pick_from_feeder_run()
+
+    def learning_activated(self):
+        self.fsm.pick_from_feeder_activated()
 
     def state_pick_from_feeder(self, event):
         rospy.logdebug('Current state: state_pick_from_feeder')
@@ -71,17 +81,13 @@ class PickFromFeederFSM(BrainFSM):
         rospy.logdebug('Current state: state_learning_pick_from_feeder')
 
         instruction = self.brain.state_manager.state.program_current_item
-        pick_pose, _ = self.brain.ph.get_pose(self.brain.block_id, instruction.id)
-        if pick_pose is None:
-            self.fsm.error(severity=ArtBrainErrorSeverities.ERROR,
-                           error=ArtBrainErrors.ERROR_PICK_POSE_NOT_SELECTED)
-        else:
-            pick_pose = pick_pose[0]
-        arm_id = self.brain.robot.select_arm_for_pick_from_feeder(
-            pick_pose, self.brain.tf_listener)
-        severity, error, arm_id = self.brain.robot.move_arm_to_pose(
-            pick_pose, arm_id, picking=True)
-        # TODO what to do if robot failed to move?
+
+        if self.brain.ph.is_pose_set(self.brain.block_id, instruction.id):
+
+            pick_pose = self.brain.ph.get_pose(self.brain.block_id, instruction.id)[0][0]
+
+            arm_id = self.brain.robot.select_arm_for_pick_from_feeder(pick_pose, self.brain.tf_listener)
+            self.brain.robot.move_arm_to_pose(pick_pose, arm_id, picking=True)
 
         severity, error, arm_id = self.brain.robot.arm_prepare_for_interaction()
         if error is not None:
@@ -103,6 +109,14 @@ class PickFromFeederFSM(BrainFSM):
         self.brain.forearm_enable_srv_client.call()
         self.pick_object_from_feeder(instruction)
         self.brain.forearm_disable_srv_client.call()
+
+    def state_learning_pick_from_feeder_activated(self, event):
+        rospy.logdebug('Current state: state_learning_pick_from_feeder_activated')
+        instruction = self.brain.state_manager.state.program_current_item
+        if self.brain.robot.rh.look_at_enabled() and self.brain.ph.is_pose_set(self.brain.block_id, instruction.id):
+            pick_pose = self.brain.ph.get_pose(self.brain.block_id, instruction.id)[0][0]
+            self.brain.robot.look_at_point(pick_pose.pose.position, pick_pose.header.frame_id)
+        self.fsm.done()
 
     def state_learning_pick_from_feeder_exit(self, event):
         rospy.logdebug('Current state: state_learning_pick_from_feeder_exit')

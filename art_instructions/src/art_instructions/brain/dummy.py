@@ -11,6 +11,8 @@ class DummyFSM(BrainFSM):
             'learning_load_block_id', 'state_learning_dummy']),
         State(name='learning_dummy_run', on_enter=[
             'learning_load_block_id', 'state_learning_dummy_run']),
+        State(name='learning_dummy_activated', on_enter=[
+            'learning_load_block_id', 'state_learning_dummy_activated']),
 
     ]
 
@@ -23,14 +25,17 @@ class DummyFSM(BrainFSM):
         ('error', 'learning_dummy', 'learning_step_error'),
         ('dummy_run', 'learning_run', 'learning_dummy_run'),
         ('done', 'learning_dummy_run', 'learning_run'),
-        ('error', 'learning_dummy_run', 'learning_step_error')
-
+        ('error', 'learning_dummy_run', 'learning_step_error'),
+        ('dummy_activated', 'learning_run', 'learning_dummy_activated'),
+        ('done', 'learning_dummy_activated', 'learning_run'),
+        ('error', 'learning_dummy_activated', 'learning_step_error')
     ]
 
     state_functions = [
         'state_dummy',
         'state_learning_dummy',
-        'state_learning_dummy_run'
+        'state_learning_dummy_run',
+        'state_learning_dummy_activated'
     ]
 
     def run(self):
@@ -42,6 +47,9 @@ class DummyFSM(BrainFSM):
     def learning_run(self):
         self.fsm.dummy_run()
 
+    def learning_activated(self):
+        self.fsm.dummy_activated()
+
     def state_dummy(self, event):
         rospy.logdebug('Current state: state_dummy')
         self.fsm.done(success=True)
@@ -51,4 +59,8 @@ class DummyFSM(BrainFSM):
 
     def state_learning_dummy_run(self, event):
         rospy.logdebug('Current state: state_learning_dummy_run')
+        self.fsm.done(success=True)
+
+    def state_learning_dummy_activated(self, event):
+        rospy.logdebug('Current state: state_learning_dummy_activated')
         self.fsm.done(success=True)

@@ -16,6 +16,9 @@ class PlaceToContainerFSM(BrainFSM):
         State(name='learning_place_to_container_run', on_enter=[
             'check_robot_in', 'learning_load_block_id', 'state_learning_place_to_container_run'],
             on_exit=['check_robot_out']),
+        State(name='learning_place_to_container_activated', on_enter=[
+            'check_robot_in', 'learning_load_block_id', 'state_learning_place_to_container_activated'],
+            on_exit=['check_robot_out']),
     ]
 
     transitions = [
@@ -27,13 +30,17 @@ class PlaceToContainerFSM(BrainFSM):
         ('error', 'learning_place_to_container', 'learning_step_error'),
         ('place_to_container_run', 'learning_run', 'learning_place_to_container_run'),
         ('done', 'learning_place_to_container_run', 'learning_run'),
-        ('error', 'learning_place_to_container_run', 'learning_step_error')
+        ('error', 'learning_place_to_container_run', 'learning_step_error'),
+        ('place_to_container_activated', 'learning_run', 'learning_place_to_container_activated'),
+        ('done', 'learning_place_to_container_activated', 'learning_run'),
+        ('error', 'learning_place_to_container_activated', 'learning_step_error')
     ]
 
     state_functions = [
         'state_place_to_container',
         'state_learning_place_to_container',
-        'state_learning_place_to_container_run'
+        'state_learning_place_to_container_run',
+        'state_learning_place_to_container_activated'
     ]
 
     def run(self):
@@ -44,6 +51,9 @@ class PlaceToContainerFSM(BrainFSM):
 
     def learning_run(self):
         self.fsm.place_to_container_run()
+
+    def learning_activated(self):
+        self.fsm.place_to_container_activated()
 
     def state_place_to_container(self, event):
         rospy.logdebug('Current state: state_place_to_container')
@@ -61,6 +71,10 @@ class PlaceToContainerFSM(BrainFSM):
             instruction,
             update_state_manager=False,
             get_ready_after_place=True)
+
+    def state_learning_place_to_container_activated(self, event):
+        rospy.logdebug('Current state: state_learning_place_to_container_activated')
+        self.fsm.done()
 
     def place_object_to_container(
             self, instruction, update_state_manager=True, get_ready_after_place=False):

@@ -16,6 +16,9 @@ class DrillPointsFSM(BrainFSM):
         State(name='learning_drill_points_run', on_enter=[
             'check_robot_in', 'learning_load_block_id', 'state_learning_drill_points_run'],
             on_exit=['check_robot_out']),
+        State(name='learning_drill_points_activated', on_enter=[
+            'check_robot_in', 'learning_load_block_id', 'state_learning_drill_points_activated'],
+            on_exit=['check_robot_out']),
 
     ]
 
@@ -28,7 +31,10 @@ class DrillPointsFSM(BrainFSM):
         ('error', 'learning_drill_points', 'learning_step_error'),
         ('drill_points_run', 'learning_run', 'learning_drill_points_run'),
         ('done', 'learning_drill_points_run', 'learning_run'),
-        ('error', 'learning_drill_points_run', 'learning_step_error')
+        ('error', 'learning_drill_points_run', 'learning_step_error'),
+        ('drill_points_activated', 'learning_run', 'learning_drill_points_activated'),
+        ('done', 'learning_drill_points_activated', 'learning_run'),
+        ('error', 'learning_drill_points_activated', 'learning_step_error')
 
     ]
 
@@ -36,7 +42,8 @@ class DrillPointsFSM(BrainFSM):
         'state_drill_points',
         'state_learning_drill_points',
         'state_learning_drill_points_run',
-        'state_learning_drill_points_exit'
+        'state_learning_drill_points_exit',
+        'state_learning_drill_points_activated'
     ]
 
     def run(self):
@@ -47,6 +54,9 @@ class DrillPointsFSM(BrainFSM):
 
     def learning_run(self):
         self.fsm.drill_points_run()
+
+    def learning_activated(self):
+        self.fsm.drill_points_activated()
 
     def state_drill_points(self, event):
         rospy.logdebug('Current state: state_drill_points')
@@ -84,6 +94,10 @@ class DrillPointsFSM(BrainFSM):
 
         self.drill_points(instruction, set_drilled_flag=False)
         self.brain.try_robot_arms_get_ready()
+
+    def state_learning_drill_points_activated(self, event):
+        rospy.logdebug('Current state: state_learning_drill_points_activated')
+        self.fsm.done()
 
     def drill_points(self, instruction, set_drilled_flag=True):
 

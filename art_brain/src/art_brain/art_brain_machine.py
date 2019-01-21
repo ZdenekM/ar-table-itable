@@ -135,4 +135,4 @@ class ArtBrainMachine(object):
             'done', 'visualize_done', 'waiting_for_action')
 
         for transition in transitions:
-            self.machine.add_transition(transition[0], transition[1], transition[2])
+            self.machine.add_transition(*transition)

@@ -580,6 +580,7 @@ class ArtBrain(object):
 
     def state_learning_done(self, event):
         rospy.logdebug('Current state: state_learning_done')
+        self.robot.get_ready()
         self.fsm.done()
         pass
 
@@ -647,6 +648,9 @@ class ArtBrain(object):
 
     def program_start_timer_cb(self, event):
         self.fsm.program_start()
+
+    def learning_activated_timer_cb(self, event):
+        self.instruction_fsm[self.state_manager.state.program_current_item.type].learning_activated()
 
     def program_resume_timer_cb(self, event):
         self.state_manager.set_system_state(
@@ -951,7 +955,11 @@ class ArtBrain(object):
                 rospy.set_param("block_id", self.block_id)
                 rospy.set_param("item_id", msg.program_current_item.id)
                 self.art.store_program(self.ph.get_program())
-        pass
+                if self.fsm.is_learning_run and not msg.edit_enabled:
+                    rospy.Timer(rospy.Duration(
+                                0, 50000000),  # 50ms
+                                self.learning_activated_timer_cb,
+                                oneshot=True)
 
     def projectors_calibrated_cb(self, msg):
 

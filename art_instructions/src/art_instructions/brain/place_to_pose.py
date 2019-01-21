@@ -27,6 +27,9 @@ class PlaceToPoseFSM(BrainFSM):
         State(name='learning_place_to_pose_run', on_enter=[
             'check_robot_in', 'learning_load_block_id', 'state_learning_place_to_pose_run'],
             on_exit=['check_robot_out']),
+        State(name='learning_place_to_pose_activated', on_enter=[
+            'check_robot_in', 'learning_load_block_id', 'state_learning_place_to_pose_activated'],
+            on_exit=['check_robot_out']),
     ]
 
     transitions = [
@@ -38,13 +41,17 @@ class PlaceToPoseFSM(BrainFSM):
         ('error', 'learning_place_to_pose', 'learning_step_error'),
         ('place_to_pose_run', 'learning_run', 'learning_place_to_pose_run'),
         ('done', 'learning_place_to_pose_run', 'learning_run'),
-        ('error', 'learning_place_to_pose_run', 'learning_step_error')
+        ('error', 'learning_place_to_pose_run', 'learning_step_error'),
+        ('place_to_pose_activated', 'learning_run', 'learning_place_to_pose_activated'),
+        ('done', 'learning_place_to_pose_activated', 'learning_run'),
+        ('error', 'learning_place_to_pose_activated', 'learning_step_error')
     ]
 
     state_functions = [
         'state_place_to_pose',
         'state_learning_place_to_pose',
-        'state_learning_place_to_pose_run'
+        'state_learning_place_to_pose_run',
+        'state_learning_place_to_pose_activated'
     ]
 
     def run(self):
@@ -55,6 +62,9 @@ class PlaceToPoseFSM(BrainFSM):
 
     def learning_run(self):
         self.fsm.place_to_pose_run()
+
+    def learning_activated(self):
+        self.fsm.place_to_pose_activated()
 
     def state_place_to_pose(self, event):
         rospy.logdebug('Current state: state_place_to_pose')
@@ -72,6 +82,18 @@ class PlaceToPoseFSM(BrainFSM):
             instruction,
             update_state_manager=False,
             get_ready_after_place=True)
+
+    def state_learning_place_to_pose_activated(self, event):
+        rospy.logdebug('Current state: state_learning_place_to_pose_activated')
+        instruction = self.brain.state_manager.state.program_current_item
+        if self.brain.robot.rh.look_at_enabled() and self.brain.ph.is_pose_set(self.brain.block_id, instruction.id):
+
+            place_pose = self.brain.ph.get_pose(self.brain.block_id, instruction.id)[0][0]
+            # Kapi HACK: place pose se aktualne vraci bez frame_id, defaultne se nastavi na marker
+            self.brain.robot.look_at_point(place_pose.pose.position,
+                                           place_pose.header.frame_id if place_pose.header.frame_id else "marker")
+
+        self.fsm.done()
 
     def place_object_to_pose(
             self, instruction, update_state_manager=True, get_ready_after_place=False):

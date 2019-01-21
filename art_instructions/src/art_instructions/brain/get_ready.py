@@ -21,6 +21,9 @@ class GetReadyFSM(BrainFSM):
             'state_update_program_item', 'check_robot_in', 'state_get_ready'], on_exit=['check_robot_out']),
         State(name='learning_get_ready_run', on_enter=[
             'check_robot_in', 'learning_load_block_id', 'state_learning_get_ready_run'],
+            on_exit=['check_robot_out']),
+        State(name='learning_get_ready_activated', on_enter=[
+            'check_robot_in', 'learning_load_block_id', 'state_learning_get_ready_activated'],
             on_exit=['check_robot_out'])
     ]
 
@@ -30,12 +33,16 @@ class GetReadyFSM(BrainFSM):
         ('error', 'get_ready', 'program_error'),
         ('get_ready_run', 'learning_run', 'learning_get_ready_run'),
         ('done', 'learning_get_ready_run', 'learning_run'),
-        ('error', 'learning_get_ready_run', 'learning_step_error')
+        ('error', 'learning_get_ready_run', 'learning_step_error'),
+        ('get_ready_activated', 'learning_run', 'learning_get_ready_activated'),
+        ('done', 'learning_get_ready_activated', 'learning_run'),
+        ('error', 'learning_get_ready_activated', 'learning_step_error')
     ]
 
     state_functions = [
         'state_get_ready',
-        'state_learning_get_ready_run'
+        'state_learning_get_ready_run',
+        'state_learning_get_ready_activated'
     ]
 
     def run(self):
@@ -43,6 +50,9 @@ class GetReadyFSM(BrainFSM):
 
     def learning_run(self):
         self.fsm.get_ready_run()
+
+    def learning_activated(self):
+        self.fsm.get_ready_activated()
 
     def state_get_ready(self, event):
         rospy.logdebug('Current state: state_get_ready')
@@ -60,7 +70,7 @@ class GetReadyFSM(BrainFSM):
             self.fsm.done(success=True)
 
     def state_learning_get_ready_run(self, event):
-        rospy.logdebug('Current state: state_get_ready')
+        rospy.logdebug('Current state: state_get_ready_run')
         if not self.brain.check_robot():
             return
         self.brain.state_manager.update_program_item(
@@ -73,3 +83,7 @@ class GetReadyFSM(BrainFSM):
             self.fsm.error(severity=severity, error=error)
         else:
             self.fsm.done(success=True)
+
+    def state_learning_get_ready_activated(self, event):
+        rospy.logdebug('Current state: state_get_ready_activated')
+        self.fsm.done(success=True)

@@ -4,6 +4,7 @@ import rospy
 from std_srvs.srv import Trigger, TriggerRequest
 from std_msgs.msg import Bool
 from art_brain import ArtBrainErrors, ArtBrainErrorSeverities, ArtBrainUtils
+from geometry_msgs.msg import PointStamped
 
 
 class VisualInspection(BrainInstruction):
@@ -29,6 +30,10 @@ class VisualInspectionFSM(BrainFSM):
         State(name='learning_visual_inspection_run', on_enter=[
             'check_robot_in', 'learning_load_block_id',
             'state_learning_visual_inspection_run'],
+            on_exit=['check_robot_out']),
+        State(name='learning_visual_inspection_activated', on_enter=[
+            'check_robot_in', 'learning_load_block_id',
+            'state_learning_visual_inspection_activated'],
             on_exit=['check_robot_out'])
     ]
 
@@ -41,14 +46,18 @@ class VisualInspectionFSM(BrainFSM):
         ('error', 'learning_visual_inspection', 'learning_step_error'),
         ('visual_inspection_run', 'learning_run', 'learning_visual_inspection_run'),
         ('done', 'learning_visual_inspection_run', 'learning_run'),
-        ('error', 'learning_visual_inspection_run', 'learning_step_error')
+        ('error', 'learning_visual_inspection_run', 'learning_step_error'),
+        ('visual_inspection_activated', 'learning_run', 'learning_visual_inspection_activated'),
+        ('done', 'learning_visual_inspection_activated', 'learning_run'),
+        ('error', 'learning_visual_inspection_activated', 'learning_step_error')
     ]
 
     state_functions = [
         'state_visual_inspection',
         'state_learning_visual_inspection_run',
         'state_learning_visual_inspection',
-        'state_learning_visual_inspection_exit'
+        'state_learning_visual_inspection_exit',
+        'state_learning_visual_inspection_activated'
     ]
 
     def __init__(self, *args, **kwargs):
@@ -69,6 +78,9 @@ class VisualInspectionFSM(BrainFSM):
     def learning_run(self):
         self.fsm.visual_inspection_run()
 
+    def learning_activated(self):
+        self.fsm.visual_inspection_activated()
+
     def state_visual_inspection(self, event):
         rospy.logdebug('Current state: state_visual_inspection')
         self.brain.state_manager.update_program_item(
@@ -78,6 +90,15 @@ class VisualInspectionFSM(BrainFSM):
     def state_learning_visual_inspection_run(self, event):
         rospy.logdebug('Current state: state_learning_visual_inspection_run')
         self.visual_inspection(get_ready_after=True)
+
+    def state_learning_visual_inspection_activated(self, event):
+        rospy.logdebug('Current state: state_learning_visual_inspection_activated')
+        instruction = self.brain.state_manager.state.program_current_item
+        print instruction
+        if self.brain.robot.rh.look_at_enabled() and self.brain.ph.is_pose_set(self.brain.block_id, instruction.id):
+            pick_pose = self.brain.ph.get_pose(self.brain.block_id, instruction.id)[0][0]
+            self.brain.robot.look_at_point(pick_pose.pose.position, pick_pose.header.frame_id)
+        self.fsm.done()
 
     def state_learning_visual_inspection(self, event):
         rospy.logdebug('Current state: state_learning_visual_inspection')
