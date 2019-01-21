@@ -156,7 +156,7 @@ class ArtTouchDriver:
             # MT_SLOT
             self.slot = self.get_slot_by_id(event.value)
             if self.slot is None:
-                self.slot = Slot(slot_id=event.value)
+                self.slot = Slot(slot_id=event.value, track_id=event.value)
                 self.slots.append(self.slot)
 
         elif event.evtype == 3 and event.code == 57 and event.value >= 0:
@@ -176,11 +176,13 @@ class ArtTouchDriver:
 
         elif event.evtype == 3 and event.code == 53:
             # x position
-            self.slot.x = event.value
+            if self.slot:
+                self.slot.x = event.value
 
         elif event.evtype == 3 and event.code == 54:
             # y position
-            self.slot.y = event.value
+            if self.slot:
+                self.slot.y = event.value
 
         elif event.evtype == 0:
 
