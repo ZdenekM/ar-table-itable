@@ -152,14 +152,25 @@ class PlaceToPoseLearn(PlaceToPose):
                     if self.ui.ph.is_pose_set(self.block_id, it_id):
 
                         if object_type is not None:
+
+                            ps = self.ui.ph.get_pose(self.block_id, it_id)[0][0]
+
                             self.ui.select_object_type(object_type.name)
                             self.place = self.ui.add_place(
                                 self.get_name(self.block_id, it_id),
-                                self.ui.ph.get_pose(self.block_id, it_id)[0][0],
+                                ps,
                                 object_type,
                                 object_id,
                                 place_cb=self.place_pose_changed,  # TODO place_cb should be set in add_place?
                                 fixed=not self.editable)
+
+                            if self.editable:
+
+                                if not self.check_place_pose([ps.pose.position.x,
+                                                              ps.pose.position.y,
+                                                              ps.pose.position.z]):
+                                    self.place.get_attention()
+
                     elif self.editable:
 
                         self.place = self.ui.add_place(self.get_name(self.block_id, it_id), self.ui.get_def_pose(
@@ -179,6 +190,29 @@ class PlaceToPoseLearn(PlaceToPose):
                         fixed=True,
                         dashed=True)
 
+    def check_place_pose(self, pp):
+
+        for arm, pos in self.arms_pos.iteritems():
+
+            if self.selected_arm and arm != self.selected_arm:
+                continue
+
+            d = sqrt((pos.x - pp[0]) ** 2 + (pos.y - pp[1]) ** 2)
+
+            if arm.range[0] < d < arm.range[1]:
+                self.place.set_ext_color()
+                self.out_of_reach = False
+                return True
+
+        self.place.set_ext_color(QtCore.Qt.red)
+
+        if not self.out_of_reach:
+            self.ui.notif(translate("PickFromFeeder", "Pose out of reach."), temp=True,
+                          message_type=NotifyUserRequest.WARN)
+            self.out_of_reach = True
+
+        return False
+
     def place_pose_changed(self, place):
 
         if self.ui.program_vis.editing_item:
@@ -187,26 +221,7 @@ class PlaceToPoseLearn(PlaceToPose):
             self.ui.state_manager.update_program_item(self.ui.ph.get_program_id(
             ), self.ui.program_vis.block_id, self.ui.program_vis.get_current_item())
 
-            pp = place.position
-
-            for arm, pos in self.arms_pos.iteritems():
-
-                if self.selected_arm and arm != self.selected_arm:
-                    continue
-
-                d = sqrt((pos.x - pp[0])**2 + (pos.y - pp[1])**2)
-
-                if arm.range[0] < d < arm.range[1]:
-                    self.place.set_ext_color()
-                    self.out_of_reach = False
-                    break
-            else:
-                self.place.set_ext_color(QtCore.Qt.red)
-
-                if not self.out_of_reach:
-                    self.ui.notif(translate("PickFromFeeder", "Pose out of reach."), temp=True,
-                                  message_type=NotifyUserRequest.WARN)
-                    self.out_of_reach = True
+            self.check_place_pose(place.position)
 
     def object_selected(self, obj, selected, msg):
 
