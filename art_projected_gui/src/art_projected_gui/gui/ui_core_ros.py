@@ -104,7 +104,7 @@ class UICoreRos(UICore):
         self.hololens_active_sub = rospy.Subscriber(
             '/art/interface/hololens/active/', Bool, self.hololens_active_cb)
         # temporarily set by default to true to avoid rosbridge crashing
-        self.hololens_connected = True
+        self.hololens_connected = False
         self.hololens_state_pub = rospy.Publisher(
             '/art/interface/hololens/state', HololensState, queue_size=1)
 
@@ -288,6 +288,9 @@ class UICoreRos(UICore):
     def interface_state_evt(self, old_state, state, flags):
 
         system_state_changed = old_state.system_state != state.system_state
+
+        rospy.logdebug("old ts: " + str(old_state.timestamp.to_sec()) + ", new ts: " + str(state.timestamp.to_sec()))
+        rospy.logdebug(state)
 
         if system_state_changed:
             rospy.logdebug("New system state: " + str(state.system_state) + ", was: " + str(old_state.system_state))
@@ -495,8 +498,8 @@ class UICoreRos(UICore):
 
         else:
 
-            rospy.logdebug("Attempt to pause/resume program in strange state: " +
-                           str(self.state_manager.state.system_state))
+            rospy.logdebug("Attempt to pause/resume program in strange state: "
+                           + str(self.state_manager.state.system_state))
             return False
 
     def cancel_cb(self):
@@ -775,15 +778,12 @@ class UICoreRos(UICore):
             rospy.logerr("Invalid state!")
             return
 
-        if old_state.block_id != state.block_id or old_state.program_current_item.id != state.program_current_item.id:
-            self.clear_all()
-
         # TODO overit funkcnost - pokud ma state novejsi timestamp nez nas - ulozit ProgramItem
-        if old_state.timestamp == rospy.Time(0) or old_state.timestamp - state.timestamp > rospy.Duration(0):
+        if old_state.timestamp == rospy.Time(0) or state.timestamp > old_state.timestamp:
 
+            self.ph.set_item_msg(state.block_id, state.program_current_item)
             rospy.logdebug('Got state with newer timestamp!')
             self.clear_all()
-
             self.learning_vis(state)
 
     def learning_vis(self, state):
@@ -829,8 +829,8 @@ class UICoreRos(UICore):
 
     def active_item_switched(self, block_id, item_id, read_only=True, blocks=False):
 
-        rospy.logdebug("Program ID:" + str(self.ph.get_program_id()) + ", active item ID: " +
-                       str((block_id, item_id)) + ", blocks: " + str(blocks) + ", ro: " + str(read_only))
+        rospy.logdebug("Program ID:" + str(self.ph.get_program_id()) + ", active item ID: "
+                       + str((block_id, item_id)) + ", blocks: " + str(blocks) + ", ro: " + str(read_only))
 
         if blocks:
 
@@ -874,7 +874,9 @@ class UICoreRos(UICore):
         if block_id and item_id is None:
             self.clear_all()
 
-        if None not in (block_id, item_id):
+        if None not in (
+                block_id,
+                item_id) and block_id != self.state_manager.state.block_id and item_id != self.state_manager.state.item_id:
 
             self.clear_all()  # TODO melo by se zavolat i pri odvybrani instrukce!
 
@@ -885,8 +887,8 @@ class UICoreRos(UICore):
 
     def active_item_switched_for_visualization(self, block_id, item_id, read_only=True, blocks=False):
         """For HoloLens visualization. Called when clicked on specific block."""
-        rospy.logdebug("Program ID:" + str(self.ph.get_program_id()) + ", active item ID: " +
-                       str((block_id, item_id)) + ", blocks: " + str(blocks) + ", ro: " + str(read_only))
+        rospy.logdebug("Program ID:" + str(self.ph.get_program_id()) + ", active item ID: "
+                       + str((block_id, item_id)) + ", blocks: " + str(blocks) + ", ro: " + str(read_only))
 
         # self.clear_all()
 
@@ -933,16 +935,16 @@ class UICoreRos(UICore):
                 translate("UICoreRos", "Failed to store program"), temp=True, message_type=NotifyUserRequest.ERROR)
             # TODO what to do?
 
-        self.notif(translate("UICoreRos", "Program stored with ID=") +
-                   str(prog.header.id), temp=True)
+        self.notif(translate("UICoreRos", "Program stored with ID=")
+                   + str(prog.header.id), temp=True)
 
         self.last_edited_prog_id = prog.header.id
 
         # TODO temporarily.. find better solution.. look with the robot to default state
-        try:
+        """try:
             self.robot_look_at_default_srv()
         except rospy.ServiceException as e:
-            print "Service call failed: %s" % e
+            print "Service call failed: %s" % e"""
 
         resp = None
         try:
@@ -957,8 +959,8 @@ class UICoreRos(UICore):
 
     def hololens_active_cb(self, msg):
         # temporarily set by default to true to avoid rosbridge crashing
-        self.hololens_connected = True
-        # self.hololens_connected = msg.data
+        # self.hololens_connected = True
+        self.hololens_connected = msg.data
 
     def program_selected_cb(self, prog_id, run=False, template=False, visualize=False):
 
@@ -1069,9 +1071,14 @@ class UICoreRos(UICore):
     def learning_request_cb(self, req):
 
         if req == LearningRequestGoal.GET_READY:
-            self.notif(
-                translate("UICoreRos", "Robot is getting ready for learning"))
-            pass
+            # TODO let the user in ar device an option to not program the robot
+            if self.hololens_connected:
+                self.notif(
+                    translate("UICoreRos", "System is getting ready for learning with AR device"))
+                req = LearningRequestGoal.GET_READY_WITHOUT_ROBOT
+            else:
+                self.notif(
+                    translate("UICoreRos", "Robot is getting ready for learning"))
         elif req == LearningRequestGoal.DONE:
 
             self.notif(translate("UICoreRos", "Robot is getting into default state"))
