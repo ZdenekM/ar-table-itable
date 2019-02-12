@@ -56,7 +56,8 @@ class PickFromFeederLearn(PickFromFeeder):
 
     def learning_done(self):
 
-        self.timer.stop()
+        if self.timer:
+            self.timer.stop()
 
     def timer_tick(self):
 
