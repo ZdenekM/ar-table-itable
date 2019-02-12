@@ -286,12 +286,13 @@ class ArtBrainRobotInterface:
 
         else:
             arm = self.get_arm_by_id(arm_id)  # type: ArtGripper
-            severity, error = arm.interaction_off()
-            if error is not None:
-                return severity, error, arm_id
-            severity, error = arm.get_ready()
-            if error is not None:
-                return severity, error, arm_id
+            if arm.interaction_state:
+                severity, error = arm.interaction_off()
+                if error is not None:
+                    return severity, error, arm_id
+                severity, error = arm.get_ready()
+                if error is not None:
+                    return severity, error, arm_id
             return None, None, arm_id
 
     def check_arm_for_pick(self, arm):

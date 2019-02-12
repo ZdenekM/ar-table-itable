@@ -33,7 +33,7 @@ class WaitForUserFSM(BrainFSM):
         'state_wait_for_user'
     ]
 
-    def run(self):
+    def run(self, **kwargs):
         self.fsm.wait_for_user()
 
     def state_wait_for_user(self, event):

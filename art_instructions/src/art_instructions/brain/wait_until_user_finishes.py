@@ -33,7 +33,7 @@ class WaitUntilUserFinishesFSM(BrainFSM):
         'state_wait_until_user_finishes'
     ]
 
-    def run(self):
+    def run(self, **kwargs):
         self.fsm.wait_until_user_finishes()
 
     def state_wait_until_user_finishes(self, event):

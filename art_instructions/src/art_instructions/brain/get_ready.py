@@ -45,13 +45,13 @@ class GetReadyFSM(BrainFSM):
         'state_learning_get_ready_activated'
     ]
 
-    def run(self):
+    def run(self, **kwargs):
         self.fsm.get_ready()
 
-    def learning_run(self):
+    def learning_run(self, **kwargs):
         self.fsm.get_ready_run()
 
-    def learning_activated(self):
+    def learning_activated(self, **kwargs):
         self.fsm.get_ready_activated()
 
     def state_get_ready(self, event):

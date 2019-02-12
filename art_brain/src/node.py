@@ -949,6 +949,10 @@ class ArtBrain(object):
                                    msg,  # type: InterfaceState
                                    flags):
         if msg.interface_id != InterfaceState.BRAIN_ID:
+
+            rospy.logdebug("Got new state from interface " + msg.interface_id +
+                           ", with ts: " + str(msg.timestamp.to_sec()))
+
             if msg.system_state == InterfaceState.STATE_LEARNING:
                 self.ph.set_item_msg(msg.block_id, msg.program_current_item)
                 rospy.set_param("program_id", self.ph.get_program_id())
@@ -1020,13 +1024,16 @@ class ArtBrain(object):
         self.instruction = instruction
 
         self.state_manager.state.edit_enabled = False
+        self.state_manager.state.timestamp = rospy.Time.now()
+        rospy.logdebug("learning_request_cb, new state ts: " + str(self.state_manager.state.timestamp.to_sec()))
         self.state_manager.send()
 
-        if goal.request == LearningRequestGoal.GET_READY:
+        if goal.request in (LearningRequestGoal.GET_READY, LearningRequestGoal.GET_READY_WITHOUT_ROBOT):
 
             self.state_manager.state.edit_enabled = True
 
-            self.instruction_fsm[instruction.type].learning()  # TODO check and handle errors
+            self.instruction_fsm[instruction.type].learning(
+                no_robot=(goal.request == LearningRequestGoal.GET_READY_WITHOUT_ROBOT))  # TODO check and handle errors
 
             self.state_manager.state.edit_enabled = True
             self.state_manager.send()

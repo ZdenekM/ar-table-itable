@@ -54,16 +54,16 @@ class PickFromPolygonFSM(BrainFSM):
         'state_learning_pick_from_polygon_activated'
     ]
 
-    def run(self):
+    def run(self, **kwargs):
         self.fsm.pick_from_polygon()
 
-    def learning(self):
+    def learning(self, **kwargs):
         self.fsm.pick_from_polygon()
 
-    def learning_run(self):
+    def learning_run(self, **kwargs):
         self.fsm.pick_from_polygon_run()
 
-    def learning_activated(self):
+    def learning_activated(self, **kwargs):
         self.fsm.pick_from_polygon_activated()
 
     def state_pick_from_polygon(self, event):

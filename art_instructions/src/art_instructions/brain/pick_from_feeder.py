@@ -57,16 +57,17 @@ class PickFromFeederFSM(BrainFSM):
         'state_learning_pick_from_feeder_activated'
     ]
 
-    def run(self):
+    def run(self, **kwargs):
         self.fsm.pick_from_feeder()
 
-    def learning(self):
-        self.fsm.pick_from_feeder()
+    def learning(self, **kwargs):
+        no_robot = kwargs.get('no_robot', False)
+        self.fsm.pick_from_feeder(no_robot=no_robot)
 
-    def learning_run(self):
+    def learning_run(self, **kwargs):
         self.fsm.pick_from_feeder_run()
 
-    def learning_activated(self):
+    def learning_activated(self, **kwargs):
         self.fsm.pick_from_feeder_activated()
 
     def state_pick_from_feeder(self, event):
@@ -78,30 +79,31 @@ class PickFromFeederFSM(BrainFSM):
         self.brain.forearm_disable_srv_client.call()
 
     def state_learning_pick_from_feeder(self, event):
+        no_robot = event.kwargs.get('no_robot', False)
         rospy.logdebug('Current state: state_learning_pick_from_feeder')
 
         instruction = self.brain.state_manager.state.program_current_item
+        if not no_robot:
+            if self.brain.ph.is_pose_set(self.brain.block_id, instruction.id):
 
-        if self.brain.ph.is_pose_set(self.brain.block_id, instruction.id):
+                pick_pose = self.brain.ph.get_pose(self.brain.block_id, instruction.id)[0][0]
 
-            pick_pose = self.brain.ph.get_pose(self.brain.block_id, instruction.id)[0][0]
+                arm_id = self.brain.robot.select_arm_for_pick_from_feeder(pick_pose, self.brain.tf_listener)
+                self.brain.robot.move_arm_to_pose(pick_pose, arm_id, picking=True)
 
-            arm_id = self.brain.robot.select_arm_for_pick_from_feeder(pick_pose, self.brain.tf_listener)
-            self.brain.robot.move_arm_to_pose(pick_pose, arm_id, picking=True)
+            severity, error, arm_id = self.brain.robot.arm_prepare_for_interaction()
+            if error is not None:
+                rospy.logerr(
+                    "Failed to prepare gripper " +
+                    str(arm_id) +
+                    " for interaction: " +
+                    str(error))
+                self.brain.robot.arm_get_ready_after_interaction()
+                self.fsm.error(severity=severity,
+                               error=error)
 
-        severity, error, arm_id = self.brain.robot.arm_prepare_for_interaction()
-        if error is not None:
-            rospy.logerr(
-                "Failed to prepare gripper " +
-                str(arm_id) +
-                " for interaction: " +
-                str(error))
-            self.brain.robot.arm_get_ready_after_interaction()
-            self.fsm.error(severity=severity,
-                           error=error)
-
-        else:
-            self.brain.forearm_enable_srv_client.call()
+            else:
+                self.brain.forearm_enable_srv_client.call()
 
     def state_learning_pick_from_feeder_run(self, event):
         rospy.logdebug('Current state: state_learning_pick_from_feeder_run')

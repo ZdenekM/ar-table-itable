@@ -69,16 +69,16 @@ class VisualInspectionFSM(BrainFSM):
             '/art/visual_inspection/result', Bool, self.visual_inspection_result_cb, queue_size=1)
         self.visual_inspection_result = None
 
-    def run(self):
+    def run(self, **kwargs):
         self.fsm.visual_inspection()
 
-    def learning(self):
+    def learning(self, **kwargs):
         self.fsm.visual_inspection()
 
-    def learning_run(self):
+    def learning_run(self, **kwargs):
         self.fsm.visual_inspection_run()
 
-    def learning_activated(self):
+    def learning_activated(self, **kwargs):
         self.fsm.visual_inspection_activated()
 
     def state_visual_inspection(self, event):

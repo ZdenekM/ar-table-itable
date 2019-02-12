@@ -46,16 +46,16 @@ class DrillPointsFSM(BrainFSM):
         'state_learning_drill_points_activated'
     ]
 
-    def run(self):
+    def run(self, **kwargs):
         self.fsm.drill_points()
 
-    def learning(self):
+    def learning(self, **kwargs):
         self.fsm.drill_points()
 
-    def learning_run(self):
+    def learning_run(self, **kwargs):
         self.fsm.drill_points_run()
 
-    def learning_activated(self):
+    def learning_activated(self, **kwargs):
         self.fsm.drill_points_activated()
 
     def state_drill_points(self, event):

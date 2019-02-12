@@ -54,16 +54,16 @@ class PlaceToGridFSM(BrainFSM):
         'state_learning_place_to_grid_activated'
     ]
 
-    def run(self):
+    def run(self, **kwargs):
         self.fsm.place_to_grid()
 
-    def learning(self):
+    def learning(self, **kwargs):
         self.fsm.place_to_grid()
 
-    def learning_run(self):
+    def learning_run(self, **kwargs):
         self.fsm.place_to_grid_run()
 
-    def learning_activated(self):
+    def learning_activated(self, **kwargs):
         self.fsm.place_to_grid_activated()
 
     def state_place_to_grid(self, event):
