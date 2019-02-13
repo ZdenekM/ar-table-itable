@@ -289,9 +289,6 @@ class UICoreRos(UICore):
 
         system_state_changed = old_state.system_state != state.system_state
 
-        rospy.logdebug("old ts: " + str(old_state.timestamp.to_sec()) + ", new ts: " + str(state.timestamp.to_sec()))
-        rospy.logdebug(state)
-
         if system_state_changed:
             rospy.logdebug("New system state: " + str(state.system_state) + ", was: " + str(old_state.system_state))
             self.clear_all(True)
@@ -778,15 +775,8 @@ class UICoreRos(UICore):
             rospy.logerr("Invalid state!")
             return
 
-        # TODO overit funkcnost - pokud ma state novejsi timestamp nez nas - ulozit ProgramItem
-        if old_state.timestamp == rospy.Time(0) or state.timestamp > old_state.timestamp:
-
-            self.ph.set_item_msg(state.block_id, state.program_current_item)
-            rospy.logdebug('Got state with newer timestamp!')
-            self.clear_all()
-            self.learning_vis(state)
-
-    def learning_vis(self, state):
+        self.ph.set_item_msg(state.block_id, state.program_current_item)
+        self.clear_all()
 
         block_id = state.block_id
         item_id = state.program_current_item.id
@@ -796,7 +786,18 @@ class UICoreRos(UICore):
             self.notif(translate("UICoreRos", "Item has no parameters."))
             return
 
-        self.program_vis.editing_item = not read_only
+        if not old_state.timestamp:
+            self.program_vis.editing_item = not read_only
+        else:
+
+            self.program_vis._update_item()
+
+            if state.interface_id == InterfaceState.BRAIN_ID and old_state.edit_enabled != state.edit_enabled:
+
+                if not self.program_vis.edit_request:
+                    rospy.logdebug("Somebody else triggered learning request.")
+                    self.program_vis.edit_request = True
+                self.program_vis.learning_request_result(True)
 
         msg = self.ph.get_item_msg(block_id, item_id)
 
@@ -871,19 +872,18 @@ class UICoreRos(UICore):
                     translate("UICoreRos",
                               "Select instruction or return to blocks."))
 
-        if block_id and item_id is None:
+        if block_id and item_id is None:  # block view
             self.clear_all()
 
-        if None not in (
-                block_id,
-                item_id) and block_id != self.state_manager.state.block_id and item_id != self.state_manager.state.item_id:
+        if None not in (block_id, item_id) and (block_id != self.state_manager.state.block_id or item_id
+                                                != self.state_manager.state.program_current_item.id):
 
             self.clear_all()  # TODO melo by se zavolat i pri odvybrani instrukce!
 
             self.state_manager.update_program_item(
                 self.ph.get_program_id(), block_id, self.ph.get_item_msg(block_id, item_id))
 
-            self.learning_vis(self.state_manager.state)
+            # self.learning_vis(self.state_manager.state)
 
     def active_item_switched_for_visualization(self, block_id, item_id, read_only=True, blocks=False):
         """For HoloLens visualization. Called when clicked on specific block."""
@@ -1101,7 +1101,9 @@ class UICoreRos(UICore):
 
     def learning_request_done_evt(self, status, result):
 
-        self.program_vis.learning_request_result(result.success)
+        # TODO check result and do something with it!
+        if not result.success:
+            rospy.logerr("Learning request failed!!!")
 
     def learning_request_done_cb(self, status, result):
 

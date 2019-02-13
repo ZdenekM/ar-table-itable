@@ -790,10 +790,6 @@ class ProgramItem(Item):
 
             self.run_request = False
 
-        if self.item_switched_cb is not None:
-            self.item_switched_cb(
-                self.block_id, self.item_id, not self.editing_item)
-
     def boundingRect(self):
 
         return QtCore.QRectF(0, 0, self.w, self.h)
