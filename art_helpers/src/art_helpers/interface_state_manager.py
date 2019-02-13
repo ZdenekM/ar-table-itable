@@ -1,6 +1,8 @@
 import rospy
 from art_msgs.msg import InterfaceState, KeyValue
 
+# TODO rather create BrainStateManager based on InterfaceStateManager (to get rid of asserts)
+
 
 class InterfaceStateManager(object):
 
@@ -30,14 +32,25 @@ class InterfaceStateManager(object):
         if msg.interface_id == self.interface_id:
             return
 
+        rospy.logdebug("Old state ts: " + str(self.state.timestamp.to_sec()) + ", new state ts: " +
+                       str(msg.timestamp.to_sec()) + ", from: " + msg.interface_id)
+
+        if self.state.timestamp:
+            if self.state.timestamp > msg.timestamp:
+                rospy.logerr("Got state from " + msg.interface_id + " with old timestamp, ignoring!")
+                return
+            # TODO check for changes in state (not as easy as self.state != msg)
+            elif self.state.timestamp == msg.timestamp and msg.interface_id != InterfaceState.BRAIN_ID:
+                rospy.logerr("Got state from " + msg.interface_id + " without updated timestamp, ignoring.")
+                return
+
         flags = {}
 
         for kv in msg.flags:
 
             flags[kv.key] = kv.value
 
-        # TODO use thread
-        if self.cb is not None:
+        if self.cb is not None and self.state != msg:
             self.cb(self.state, msg, flags)
 
         if self.interface_id != InterfaceState.BRAIN_ID:
@@ -61,6 +74,8 @@ class InterfaceStateManager(object):
         return self.state.system_state
 
     def set_system_state(self, st, auto_send=True):
+
+        assert self.interface_id == InterfaceState.BRAIN_ID
 
         self.state.timestamp = rospy.Time.now()
         self.state.system_state = st
@@ -97,3 +112,11 @@ class InterfaceStateManager(object):
 
         if auto_send:
             self.send()
+
+    def set_edit_enabled(self, val):
+
+        assert self.interface_id == InterfaceState.BRAIN_ID
+
+        self.state.timestamp = rospy.Time.now()
+        self.state.edit_enabled = val
+        self.send()
