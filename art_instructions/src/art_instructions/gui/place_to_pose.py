@@ -111,6 +111,10 @@ class PlaceToPoseLearn(PlaceToPose):
 
                         for arm in self.ui.rh.get_robot_arms():
 
+                            if not arm.base_link:
+                                self.logwarn("Arm base_link not defined!")
+                                continue
+
                             p = PoseStamped()
                             p.header.frame_id = arm.base_link
 
@@ -191,6 +195,9 @@ class PlaceToPoseLearn(PlaceToPose):
                         dashed=True)
 
     def check_place_pose(self, pp):
+
+        if not self.arms_pos:  # robot without arms (e.g. art_empty_arm)
+            return True
 
         for arm, pos in self.arms_pos.iteritems():
 
