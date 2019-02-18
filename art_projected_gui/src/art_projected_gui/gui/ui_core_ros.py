@@ -764,18 +764,16 @@ class UICoreRos(UICore):
                 # TODO what to do?
                 return
 
-            if state.block_id != 0 and state.program_current_item.id != 0:
-
-                # there may be unsaved changes - let's use ProgramItem from brain
-                self.ph.set_item_msg(state.block_id, state.program_current_item)
-
-            self.show_program_vis()
-
         if state.block_id == 0 or state.program_current_item.id == 0:
             rospy.logerr("Invalid state!")
             return
 
-        self.ph.set_item_msg(state.block_id, state.program_current_item)
+        if state.block_id and state.program_current_item.id:
+            self.ph.set_item_msg(state.block_id, state.program_current_item)
+
+        if not self.program_vis or system_state_changed:
+            self.show_program_vis()
+
         self.clear_all()
 
         block_id = state.block_id
@@ -788,16 +786,6 @@ class UICoreRos(UICore):
 
         if not old_state.timestamp:
             self.program_vis.editing_item = not read_only
-        else:
-
-            self.program_vis._update_item()
-
-            if state.interface_id == InterfaceState.BRAIN_ID and old_state.edit_enabled != state.edit_enabled:
-
-                if not self.program_vis.edit_request:
-                    rospy.logdebug("Somebody else triggered learning request.")
-                    self.program_vis.edit_request = True
-                self.program_vis.learning_request_result(True)
 
         msg = self.ph.get_item_msg(block_id, item_id)
 
@@ -827,6 +815,17 @@ class UICoreRos(UICore):
             else:
                 self.notif(
                     translate("UICoreRos", "Press 'Edit' to adjust selected instruction."))
+
+        if old_state.timestamp:
+
+            self.program_vis._update_item()
+
+            if state.interface_id == InterfaceState.BRAIN_ID and old_state.edit_enabled != state.edit_enabled:
+
+                if not self.program_vis.edit_request:
+                    rospy.logdebug("Somebody else triggered learning request.")
+                    self.program_vis.edit_request = True
+                self.program_vis.learning_request_result(True)
 
     def active_item_switched(self, block_id, item_id, read_only=True, blocks=False):
 
