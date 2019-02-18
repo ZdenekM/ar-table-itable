@@ -162,7 +162,7 @@ class PickFromFeederLearn(PickFromFeeder):
         self.ui.program_vis.set_object(closest_obj.object_type)
         self.ui.program_vis.set_pose(self.arm_position[last_arm][-1])
         self.ui.state_manager.update_program_item(self.ui.ph.get_program_id(),
-                                                  self.block_id, self.program_vis.get_current_item())
+                                                  self.block_id, self.ui.program_vis.get_current_item())
 
         self.ui.notif(translate("PickFromFeeder", "Gripper pose stored."), temp=True)
         self.ui.notify_info()
