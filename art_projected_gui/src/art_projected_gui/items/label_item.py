@@ -47,6 +47,9 @@ class LabelItem(Item):
         md = {"msg": msg, "min_duration": min_duration, "shown_at": None, "type": message_type}
 
         if temp:
+            if self.temp_msgs and msg == self.temp_msgs[-1]["msg"]:
+                rospy.logdebug("Ignoring temp. notification: " + msg)
+                return
             self.temp_msgs.append(md)
         else:
             self.message = md
