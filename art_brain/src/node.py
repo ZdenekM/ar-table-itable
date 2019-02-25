@@ -925,6 +925,8 @@ class ArtBrain(object):
         resp = TriggerResponse()
         if not self.fsm.is_learning_run:
             resp.success = False
+        else:
+            self.art.store_program(self.ph.get_program())
         rospy.logdebug('Stopping learning')
         self.learning = False
         rospy.set_param("learning_program", False)
@@ -948,11 +950,11 @@ class ArtBrain(object):
         if msg.interface_id != InterfaceState.BRAIN_ID:
 
             if msg.system_state == InterfaceState.STATE_LEARNING:
-                self.ph.set_item_msg(msg.block_id, msg.program_current_item)
+                if msg.block_id and msg.program_current_item.id:
+                    self.ph.set_item_msg(msg.block_id, msg.program_current_item)
                 rospy.set_param("program_id", self.ph.get_program_id())
                 rospy.set_param("block_id", self.block_id)
                 rospy.set_param("item_id", msg.program_current_item.id)
-                self.art.store_program(self.ph.get_program())
                 if self.fsm.is_learning_run and not msg.edit_enabled:
                     rospy.Timer(rospy.Duration(
                                 0, 50000000),  # 50ms
