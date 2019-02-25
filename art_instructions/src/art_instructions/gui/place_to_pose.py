@@ -180,6 +180,7 @@ class PlaceToPoseLearn(PlaceToPose):
                         self.place = self.ui.add_place(self.get_name(self.block_id, it_id), self.ui.get_def_pose(
                         ), object_type, object_id, place_cb=self.place_pose_changed, fixed=not self.editable)
 
+                        self.ui.program_vis.item_edit_btn.set_enabled(False)
                         self.place.get_attention()
 
                     continue
@@ -228,7 +229,12 @@ class PlaceToPoseLearn(PlaceToPose):
             self.ui.state_manager.update_program_item(self.ui.ph.get_program_id(
             ), self.ui.program_vis.block_id, self.ui.program_vis.get_current_item())
 
-            self.check_place_pose(place.position)
+            check = self.check_place_pose(place.position)
+            self.ui.program_vis.item_edit_btn.set_enabled(check)
+            if check:
+                self.ui.program_vis.item_edit_btn.get_attention()
+            else:
+                self.ui.program_vis.item_edit_btn.stop_getting_attention()
 
     def object_selected(self, obj, selected, msg):
 
