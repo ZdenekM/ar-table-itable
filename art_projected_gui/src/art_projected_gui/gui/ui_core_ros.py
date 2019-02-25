@@ -756,6 +756,11 @@ class UICoreRos(UICore):
 
     def state_learning(self, old_state, state, flags, system_state_changed):
 
+        # we got our own state from brain
+        # ...this should be ignored in edit mode (no need to recreate everything from scratch)
+        if old_state.timestamp >= state.timestamp and not state.edit_enabled:
+            return
+
         if system_state_changed:
 
             self.last_edited_prog_id = state.program_id
@@ -777,21 +782,25 @@ class UICoreRos(UICore):
         if not self.program_vis or system_state_changed:
             self.show_program_vis()
 
-        self.clear_all()
-
         if not state.block_id:  # block_id 0 -> show blocks
+            self.clear_all()
             return
 
         block_id = state.block_id
         item_id = state.program_current_item.id
         read_only = not state.edit_enabled
 
-        if not self.ph.item_requires_learning(block_id, item_id):
-            self.notif(translate("UICoreRos", "Item has no parameters."))
-            return
+        self.clear_all()
 
         if not old_state.timestamp:
             self.program_vis.editing_item = not read_only
+
+        if not item_id:  # no item is selected
+            return
+
+        if not self.ph.item_requires_learning(block_id, item_id):
+            self.notif(translate("UICoreRos", "Item has no parameters."))
+            return
 
         msg = self.ph.get_item_msg(block_id, item_id)
 
@@ -846,6 +855,7 @@ class UICoreRos(UICore):
                               "All blocks are learned. Program may be saved using 'Done'"), temp=True)
 
             if block_id is None:
+                self.clear_all()
                 self.notif(
                     translate(
                         "UICoreRos",
@@ -872,10 +882,9 @@ class UICoreRos(UICore):
 
         else:
 
-            if item_id is None:
-                self.notif(
-                    translate("UICoreRos",
-                              "Select instruction or return to blocks."))
+            if block_id and not item_id:
+                self.notif(translate("UICoreRos", "Select instruction or return to blocks."))
+                self.state_manager.update_program_item(self.ph.get_program_id(), block_id)
 
         if block_id and item_id is None:  # block view
             self.clear_all()
