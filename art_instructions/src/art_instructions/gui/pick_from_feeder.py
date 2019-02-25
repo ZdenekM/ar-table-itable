@@ -5,7 +5,6 @@ from art_msgs.msg import InstancesArray
 from geometry_msgs.msg import PoseStamped
 from collections import deque
 import tf
-# from art_projected_gui.items import PlaceItem
 from art_msgs.msg import InstancesArray
 from math import sqrt
 
@@ -43,6 +42,8 @@ class PickFromFeederLearn(PickFromFeeder):
 
         self.timer = None
 
+        done = self.ui.ph.item_learned(*self.cid)
+
         if self.editable:
 
             self.timer = QtCore.QTimer()
@@ -52,7 +53,16 @@ class PickFromFeederLearn(PickFromFeeder):
             self.arm_position = {}
             self.last_move = {}  # timestamp of the last move for each arm
 
-            self.ui.notif(translate("PickFromFeeder", "Point robot's gripper on desired object in feeder."))
+            if not done:
+                self.ui.notif(translate("PickFromFeeder", "Point robot's gripper on desired part in feeder."))
+                self.notified = True
+
+        if done:
+            self.ui.notif(
+                translate(
+                    "PickFromFeeder",
+                    "You are done. However, part type might be changed if necessary."))
+            self.notified = True
 
     def learning_done(self):
 
@@ -164,6 +174,7 @@ class PickFromFeederLearn(PickFromFeeder):
         self.ui.state_manager.update_program_item(self.ui.ph.get_program_id(),
                                                   self.block_id, self.ui.program_vis.get_current_item())
 
+        self.ui.program_vis.item_edit_btn.get_attention()
         self.ui.notif(translate("PickFromFeeder", "Gripper pose stored."), temp=True)
         self.ui.notify_info()
 
