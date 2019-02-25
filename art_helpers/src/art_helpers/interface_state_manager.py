@@ -1,5 +1,5 @@
 import rospy
-from art_msgs.msg import InterfaceState, KeyValue
+from art_msgs.msg import InterfaceState, KeyValue, ProgramItem
 
 # TODO rather create BrainStateManager based on InterfaceStateManager (to get rid of asserts)
 
@@ -83,7 +83,10 @@ class InterfaceStateManager(object):
         if auto_send:
             self.send()
 
-    def update_program_item(self, prog_id, block_id, program_item_msg, flags={}, auto_send=True):
+    def update_program_item(self, prog_id, block_id, program_item_msg=None, flags={}, auto_send=True):
+
+        if program_item_msg is None:
+            program_item_msg = ProgramItem()
 
         self.state.timestamp = rospy.Time.now()
         self.state.program_id = prog_id

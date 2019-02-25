@@ -100,6 +100,13 @@ class UICoreRos(UICore):
             '/art/brain/visualize/start', ProgramIdTrigger)  # TODO wait for service? where?
         self.stop_visualizing_srv = rospy.ServiceProxy(
             '/art/brain/visualize/stop', Trigger)  # TODO wait for service? where?
+
+        # TODO temporary.. replace with something more inteligent than bool topic msg
+        self.hololens_active_sub = rospy.Subscriber(
+            '/art/interface/hololens/learning/', Bool, self.hololens_learning_cb)
+        # temporarily set by default to true to avoid rosbridge crashing
+        self.hololens_learning = False
+
         # for checking if HoloLens is connected
         self.hololens_active_sub = rospy.Subscriber(
             '/art/interface/hololens/active/', Bool, self.hololens_active_cb)
@@ -764,10 +771,6 @@ class UICoreRos(UICore):
                 # TODO what to do?
                 return
 
-        if state.block_id == 0 or state.program_current_item.id == 0:
-            rospy.logerr("Invalid state!")
-            return
-
         if state.block_id and state.program_current_item.id:
             self.ph.set_item_msg(state.block_id, state.program_current_item)
 
@@ -775,6 +778,9 @@ class UICoreRos(UICore):
             self.show_program_vis()
 
         self.clear_all()
+
+        if not state.block_id:  # block_id 0 -> show blocks
+            return
 
         block_id = state.block_id
         item_id = state.program_current_item.id
@@ -961,6 +967,9 @@ class UICoreRos(UICore):
         # self.hololens_connected = True
         self.hololens_connected = msg.data
 
+    def hololens_learning_cb(self, msg):
+        self.hololens_learning = msg.data
+
     def program_selected_cb(self, prog_id, run=False, template=False, visualize=False):
 
         self.template = template
@@ -1071,7 +1080,7 @@ class UICoreRos(UICore):
 
         if req == LearningRequestGoal.GET_READY:
             # TODO let the user in ar device an option to not program the robot
-            if self.hololens_connected:
+            if self.hololens_learning:
                 self.notif(
                     translate("UICoreRos", "System is getting ready for learning with AR device"))
                 req = LearningRequestGoal.GET_READY_WITHOUT_ROBOT

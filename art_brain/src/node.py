@@ -882,10 +882,7 @@ class ArtBrain(object):
             return resp
 
         rospy.logdebug('Starting learning')
-        (self.block_id, item_id) = self.ph.get_first_item_id()
-        self.state_manager.update_program_item(
-            req.program_id, self.block_id, self.ph.get_item_msg(
-                self.block_id, item_id), auto_send=False)
+        self.state_manager.update_program_item(req.program_id, 0, auto_send=False)  # block_id 0 -> show blocks
         self.state_manager.set_system_state(InterfaceState.STATE_LEARNING)
         resp.success = True
         self.fsm.learning_start()
