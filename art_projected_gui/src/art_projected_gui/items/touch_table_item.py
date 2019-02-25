@@ -8,6 +8,16 @@ from desc_item import DescItem
 from button_item import ButtonItem
 from label_item import LabelItem
 
+DEBUG = False  # TODO comeup with solution for whole ARCOR or at least gui...
+
+
+def logdebug(msg):
+
+    if not DEBUG:
+        return
+
+    rospy.logdebug(msg)
+
 
 class TouchPointItem(Item):
 
@@ -30,7 +40,7 @@ class TouchPointItem(Item):
 
         if self.pointed_item is not None:
 
-            rospy.logdebug("releasing pointed item: " + self.pointed_item.__class__.__name__)
+            logdebug("releasing pointed item: " + self.pointed_item.__class__.__name__)
             self.pointed_item.set_hover(False, self)
             self.pointed_item.cursor_release()
             self.pointed_item = None
@@ -63,7 +73,7 @@ class TouchPointItem(Item):
 
                         it = it.parentItem()
 
-                    rospy.logdebug("new pointed item: " + it.__class__.__name__)
+                    logdebug("new pointed item: " + it.__class__.__name__)
 
                     it.set_hover(True, self)
                     self.pointed_item = it
@@ -161,7 +171,7 @@ class TouchTableItem(Item):
                 to_delete.append(k)
 
         for k in to_delete:
-            rospy.logdebug("deleting outdated touch, id: " + str(k))
+            logdebug("deleting outdated touch, id: " + str(k))
             self.delete_id(k)
 
     def boundingRect(self):
@@ -177,7 +187,7 @@ class TouchTableItem(Item):
         if id not in self.touch_points:
             return
 
-        rospy.logdebug("deleting touch point, id: " + str(id))
+        logdebug("deleting touch point, id: " + str(id))
         self.touch_points[id].end_of_touch()
         self.scene().removeItem(self.touch_points[id])
         del self.touch_points[id]
@@ -193,7 +203,7 @@ class TouchTableItem(Item):
         if msg.id not in self.touch_points and msg.touch:
 
             # TODO check frame_id
-            rospy.logdebug("new touch point, id: " + str(msg.id))
+            logdebug("new touch point, id: " + str(msg.id))
             self.touch_points[msg.id] = TouchPointItem(
                 self.scene(), msg.point.point.x, msg.point.point.y, self, show=self.show_touch_points)
 
@@ -201,25 +211,25 @@ class TouchTableItem(Item):
 
             if not msg.touch:
 
-                rospy.logdebug("end of touch, id: " + str(msg.id))
+                logdebug("end of touch, id: " + str(msg.id))
                 self.delete_id(msg.id)
 
             else:
 
-                rospy.logdebug("update of touch, id: " + str(msg.id))
+                logdebug("update of touch, id: " + str(msg.id))
                 self.touch_points[msg.id].set_poss(msg.point.point.x, msg.point.point.y)
 
         # enable / disable given items
         if len(self.touch_points) > 0 and touches == 0:
 
-            rospy.logdebug("disabling")
+            logdebug("disabling")
 
             for cur in self.items_to_disable_on_touch:
                 cur.set_enabled(False, True)
 
         if len(self.touch_points) == 0 and touches > 0:
 
-            rospy.logdebug("enabling")
+            logdebug("enabling")
 
             for cur in self.items_to_disable_on_touch:
                 cur.set_enabled(True, True)
