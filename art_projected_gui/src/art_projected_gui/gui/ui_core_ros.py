@@ -47,7 +47,7 @@ def get_error_string(error):
         rospy.logdebug("Undefined error: " + str(error))
         return "Undefined error"
 
-    return self.error_dict[error]
+    return error_dict[error]
 
 
 def create_hololens_state_msg(hololens_state, visualization_state=None, visualize_whole_program=None):
@@ -312,7 +312,7 @@ class UICoreRos(UICore):
 
             elif state.error_severity == InterfaceState.WARNING:
 
-                if state.system_state == InterfaceState.STATE_LEARNING:
+                if state.system_state == InterfaceState.STATE_LEARNING_RUNNING:
 
                     self.notif(get_error_string(state.error_code), temp=True,
                                message_type=NotifyUserRequest.ERROR)
@@ -362,7 +362,7 @@ class UICoreRos(UICore):
 
             self.state_learning(old_state, state, flags, system_state_changed)
 
-        elif state.system_state in [InterfaceState.STATE_PROGRAM_RUNNING, InterfaceState.STATE_PROGRAM_STOPPED]:
+        elif state.system_state in [InterfaceState.STATE_PROGRAM_RUNNING, InterfaceState.STATE_PROGRAM_STOPPED, InterfaceState.STATE_LEARNING_RUNNING]:
 
             self.state_running(old_state, state, flags, system_state_changed)
 
@@ -419,6 +419,10 @@ class UICoreRos(UICore):
             self.program_vis.instruction = self.current_instruction  # TODO how to avoid this?
             self.program_vis.set_active(
                 state.block_id, state.program_current_item.id)
+
+            if state.system_state == InterfaceState.STATE_LEARNING_RUNNING:
+                self.program_vis.pr_pause_btn.set_enabled(False)
+                self.program_vis.pr_cancel_btn.set_enabled(False)
 
         else:
 

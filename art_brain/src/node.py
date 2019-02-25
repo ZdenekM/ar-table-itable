@@ -540,6 +540,8 @@ class ArtBrain(object):
         self.block_id = self.state_manager.state.block_id
 
     def state_learning_run(self, event):
+        if self.state_manager.state.system_state != InterfaceState.STATE_LEARNING:
+            self.state_manager.set_system_state(InterfaceState.STATE_LEARNING)
         rospy.logdebug('Current state: state_learning_run')
 
     def state_learning_step_error(self, event):
@@ -1036,7 +1038,7 @@ class ArtBrain(object):
         elif goal.request == LearningRequestGoal.EXECUTE_ITEM:
             self.ph.set_item_msg(
                 self.state_manager.state.block_id, instruction)
-
+            self.state_manager.set_system_state(InterfaceState.STATE_LEARNING_RUNNING)
             self.instruction_fsm[instruction.type].learning_run()  # TODO check and handle errors
             self.as_learning_request.set_succeeded(result)
 
