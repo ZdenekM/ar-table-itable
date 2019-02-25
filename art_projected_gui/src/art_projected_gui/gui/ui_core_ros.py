@@ -754,11 +754,11 @@ class UICoreRos(UICore):
 
         self.clear_all()
 
-    def state_learning(self, old_state, state, flags, system_state_changed):
+    def state_learning(self, old_state, state, flags, system_state_changed, force=False):
 
         # we got our own state from brain
         # ...this should be ignored in edit mode (no need to recreate everything from scratch)
-        if old_state.timestamp >= state.timestamp and not state.edit_enabled:
+        if not force and old_state.timestamp >= state.timestamp and not state.edit_enabled:
             return
 
         if system_state_changed:
@@ -816,7 +816,6 @@ class UICoreRos(UICore):
             self.program_vis.instruction = self.current_instruction  # TODO how to avoid this?
             self.program_vis.set_active(block_id, item_id)
 
-        # TODO fix notified - how to get it from instruction?
         if read_only and self.current_instruction and not self.current_instruction.notified:
 
             if self.ph.item_has_nothing_to_set(block_id, item_id):
@@ -861,13 +860,6 @@ class UICoreRos(UICore):
                         "UICoreRos",
                         "Select program block and edit it. Press 'Done' to save changes and return to program list."))
             else:
-                # get first program item from clicked block .. [1] because function
-                # returns tuple - (block_id, item_id)
-                # _item_id = self.ph.get_first_item_id(block_id=block_id)[1]
-                # actualize InterfaceState msg with currently clicked block
-                # if None not in (block_id, _item_id):
-                #    self.state_manager.update_program_item(
-                #        self.ph.get_program_id(), block_id, self.ph.get_item_msg(block_id, _item_id))
 
                 if self.ph.block_learned(block_id):
                     self.notif(
@@ -892,12 +884,12 @@ class UICoreRos(UICore):
         if None not in (block_id, item_id) and (block_id != self.state_manager.state.block_id or item_id
                                                 != self.state_manager.state.program_current_item.id):
 
-            self.clear_all()  # TODO melo by se zavolat i pri odvybrani instrukce!
+            self.clear_all()
 
             self.state_manager.update_program_item(
                 self.ph.get_program_id(), block_id, self.ph.get_item_msg(block_id, item_id))
 
-            # self.learning_vis(self.state_manager.state)
+            self.state_learning(self.state_manager.state, self.state_manager.state, {}, False, force=True)
 
     def active_item_switched_for_visualization(self, block_id, item_id, read_only=True, blocks=False):
         """For HoloLens visualization. Called when clicked on specific block."""
