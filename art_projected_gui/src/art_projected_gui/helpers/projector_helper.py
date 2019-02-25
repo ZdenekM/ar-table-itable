@@ -23,7 +23,7 @@ class ProjectorHelper():
 
         self.srv_calibrate.wait_for_service()
 
-        while self.calibrated is None:
+        while self.calibrated is None and not rospy.is_shutdown():
 
             rospy.sleep(0.1)
 
