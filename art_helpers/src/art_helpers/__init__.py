@@ -19,3 +19,14 @@ def array_from_param(param, target_type=str, expected_length=None):
         assert len(tmp) == expected_length
 
     return tmp
+
+
+def call_trigger_srv(srv):
+    """For simple cases when one is not interested if it failed or returned False"""
+
+    try:
+        resp = srv()
+    except rospy.ServiceException:
+        return False
+
+    return resp.success

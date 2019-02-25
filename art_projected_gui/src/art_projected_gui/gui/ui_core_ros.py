@@ -9,7 +9,7 @@ from art_projected_gui.items import ObjectItem, ButtonItem, PoseStampedCursorIte
     ProgramListItem, ProgramItem, DialogItem, PolygonItem
 from art_projected_gui.helpers import conversions
 from art_helpers import InterfaceStateManager, ProgramHelper, ArtRobotHelper, UnknownRobot,\
-    RobotParametersNotOnParameterServer
+    RobotParametersNotOnParameterServer, call_trigger_srv
 from art_msgs.srv import NotifyUser, NotifyUserResponse,\
     ProgramErrorResolve, ProgramErrorResolveRequest, ProgramIdTrigger, ProgramIdTriggerRequest, NotifyUserRequest
 from std_msgs.msg import Bool
@@ -22,6 +22,53 @@ import importlib
 
 
 translate = QtCore.QCoreApplication.translate
+
+error_dict = {
+    InterfaceState.ERROR_ROBOT_HALTED: translate("ErrorStrings", "Robot's motors halted."),
+    InterfaceState.ERROR_UNKNOWN: translate("ErrorStrings", "Unknown error."),
+    InterfaceState.ERROR_OBJECT_MISSING: translate("ErrorStrings", "Cannot find object."),
+    InterfaceState.ERROR_OBJECT_MISSING_IN_POLYGON: translate("ErrorStrings",
+                                                              "There is no object left in the polygon."),
+    InterfaceState.ERROR_NO_GRIPPER_AVAILABLE: translate("ErrorStrings", "No gripper available."),
+    InterfaceState.ERROR_OBJECT_IN_GRIPPER: translate("ErrorStrings",
+                                                      "Robot already holds object and cannot grasp another."),
+    InterfaceState.ERROR_NO_OBJECT_IN_GRIPPER: translate("ErrorStrings",
+                                                         "Robot should hold object but it doesn't."),
+    InterfaceState.ERROR_PICK_FAILED: translate("ErrorStrings", "Robot failed to pick the object."),
+    InterfaceState.ERROR_PLACE_FAILED: translate("ErrorStrings", "Robot failed to place the object."),
+    InterfaceState.ERROR_DRILL_FAILED: translate("ErrorStrings", "Robot failed to apply a glue to the object."),
+    InterfaceState.ERROR_GRIPPER_NOT_HOLDING_SELECTED_OBJECT: translate("ErrorStrings",
+                                                                        "Robot is not holding object."),
+}
+
+
+def get_error_string(error):
+    if error not in error_dict:
+        rospy.logdebug("Undefined error: " + str(error))
+        return "Undefined error"
+
+    return self.error_dict[error]
+
+
+def create_hololens_state_msg(hololens_state, visualization_state=None, visualize_whole_program=None):
+
+    msg = HololensState()
+    msg.hololens_state = hololens_state
+
+    if hololens_state == HololensState.STATE_VISUALIZING and visualization_state is not None:
+        msg.visualization_state = visualization_state
+    # visualization not running at all
+    else:
+        msg.visualization_state = HololensState.VISUALIZATION_DISABLED
+
+    if visualize_whole_program is not None:
+        msg.visualize_whole_program = visualize_whole_program
+        # if visualize_whole_program:
+        #     msg.flags.append(KeyValue("visualize_whole_program", "true"))
+        # else:
+        #     msg.flags.append(KeyValue("visualize_whole_program", "false"))
+
+    return msg
 
 
 class UICoreRos(UICore):
@@ -48,24 +95,6 @@ class UICoreRos(UICore):
             font_scale=rospy.get_param("font_scale", 1.0))
 
         self.tfl = tf.TransformListener()
-
-        self.error_dict = {
-            InterfaceState.ERROR_ROBOT_HALTED: translate("ErrorStrings", "Robot's motors halted."),
-            InterfaceState.ERROR_UNKNOWN: translate("ErrorStrings", "Unknown error."),
-            InterfaceState.ERROR_OBJECT_MISSING: translate("ErrorStrings", "Cannot find object."),
-            InterfaceState.ERROR_OBJECT_MISSING_IN_POLYGON: translate("ErrorStrings",
-                                                                      "There is no object left in the polygon."),
-            InterfaceState.ERROR_NO_GRIPPER_AVAILABLE: translate("ErrorStrings", "No gripper available."),
-            InterfaceState.ERROR_OBJECT_IN_GRIPPER: translate("ErrorStrings",
-                                                              "Robot already holds object and cannot grasp another."),
-            InterfaceState.ERROR_NO_OBJECT_IN_GRIPPER: translate("ErrorStrings",
-                                                                 "Robot should hold object but it doesn't."),
-            InterfaceState.ERROR_PICK_FAILED: translate("ErrorStrings", "Robot failed to pick the object."),
-            InterfaceState.ERROR_PLACE_FAILED: translate("ErrorStrings", "Robot failed to place the object."),
-            InterfaceState.ERROR_DRILL_FAILED: translate("ErrorStrings", "Robot failed to apply a glue to the object."),
-            InterfaceState.ERROR_GRIPPER_NOT_HOLDING_SELECTED_OBJECT: translate("ErrorStrings",
-                                                                                "Robot is not holding object."),
-        }
 
         QtCore.QObject.connect(self, QtCore.SIGNAL(
             'objects'), self.object_cb_evt)
@@ -104,13 +133,13 @@ class UICoreRos(UICore):
         # TODO temporary.. replace with something more inteligent than bool topic msg
         self.hololens_active_sub = rospy.Subscriber(
             '/art/interface/hololens/learning/', Bool, self.hololens_learning_cb)
-        # temporarily set by default to true to avoid rosbridge crashing
+
         self.hololens_learning = False
 
         # for checking if HoloLens is connected
         self.hololens_active_sub = rospy.Subscriber(
             '/art/interface/hololens/active/', Bool, self.hololens_active_cb)
-        # temporarily set by default to true to avoid rosbridge crashing
+
         self.hololens_connected = False
         self.hololens_state_pub = rospy.Publisher(
             '/art/interface/hololens/state', HololensState, queue_size=1)
@@ -123,9 +152,6 @@ class UICoreRos(UICore):
             '/art/brain/learning/stop', Trigger)  # TODO wait for service? where?
 
         self.visualizing = False
-
-        self.robot_look_at_default_srv = rospy.ServiceProxy(
-            '/art/robot/look_at/default', Trigger)
 
         self.program_pause_srv = rospy.ServiceProxy(
             '/art/brain/program/pause', Trigger)
@@ -168,12 +194,7 @@ class UICoreRos(UICore):
         self.robot_arms = self.rh.get_robot_arms()
 
         self.current_instruction = None
-        self.items_to_keep = []
         self.vis_instructions = []
-
-        self.items_to_keep_timer = QtCore.QTimer()
-        self.items_to_keep_timer.timeout.connect(self.items_to_keep_timer_tick)
-        self.items_to_keep_timer.start(100)
 
         self.state_manager = InterfaceStateManager(
             "PROJECTED UI", cb=self.interface_state_cb)
@@ -208,32 +229,6 @@ class UICoreRos(UICore):
 
         for plugin in self.plugins:
             plugin.notify_warn()
-
-    def items_to_keep_timer_tick(self):
-
-        now = rospy.Time.now()
-
-        to_delete = []
-
-        for item, ts in self.items_to_keep:
-
-            if ts < now:
-                self.scene.removeItem(item)
-                to_delete.append((item, ts))
-
-        if to_delete:
-            rospy.loginfo("Deleting " + str(len(to_delete)) + " scene item(s).")
-
-        for td in to_delete:
-            self.items_to_keep.remove(td)
-
-    def get_error_string(self, error):
-
-        if error not in self.error_dict:
-            rospy.logdebug("Undefined error: " + str(error))
-            return "Undefined error"
-
-        return self.error_dict[error]
 
     def notify_user_srv_cb(self, req):
 
@@ -313,13 +308,13 @@ class UICoreRos(UICore):
 
             if state.error_severity == InterfaceState.INFO:
 
-                self.notif(self.get_error_string(state.error_code), message_type=NotifyUserRequest.ERROR, temp=True)
+                self.notif(get_error_string(state.error_code), message_type=NotifyUserRequest.ERROR, temp=True)
 
             elif state.error_severity == InterfaceState.WARNING:
 
                 if state.system_state == InterfaceState.STATE_LEARNING:
 
-                    self.notif(self.get_error_string(state.error_code), temp=True,
+                    self.notif(get_error_string(state.error_code), temp=True,
                                message_type=NotifyUserRequest.ERROR)
 
                 else:
@@ -331,7 +326,7 @@ class UICoreRos(UICore):
                     self.program_error_dialog = DialogItem(self.scene,
                                                            self.width / 2,
                                                            0.1,
-                                                           self.get_error_string(
+                                                           get_error_string(
                                                                state.error_code),
                                                            [
                                                                translate(
@@ -377,7 +372,6 @@ class UICoreRos(UICore):
 
     def interface_state_cb(self, old_state, state, flags):
 
-        # print state
         self.emit(QtCore.SIGNAL('interface_state'), old_state, state, flags)
 
     def state_running(self, old_state, state, flags, system_state_changed):
@@ -469,13 +463,7 @@ class UICoreRos(UICore):
 
         if self.state_manager.state.system_state == InterfaceState.STATE_PROGRAM_STOPPED:
 
-            # TODO call trigger service method
-            try:
-                resp = self.program_resume_srv()
-            except rospy.ServiceException:
-                pass
-
-            if resp is not None and resp.success:
+            if call_trigger_srv(self.program_resume_srv):
                 return True
             else:
                 self.notif(translate("UICoreRos", "Failed to resume program."),
@@ -484,12 +472,7 @@ class UICoreRos(UICore):
 
         elif self.state_manager.state.system_state == InterfaceState.STATE_PROGRAM_RUNNING:
 
-            try:
-                resp = self.program_pause_srv()
-            except rospy.ServiceException:
-                pass
-
-            if resp is not None and resp.success:
+            if call_trigger_srv(self.program_pause_srv):
                 self.notif(
                     translate("UICoreRos", "Program paused."))
                 return True
@@ -512,12 +495,7 @@ class UICoreRos(UICore):
                 InterfaceState.STATE_PROGRAM_RUNNING,
                 InterfaceState.STATE_PROGRAM_STOPPED]:
 
-            try:
-                resp = self.program_stop_srv()
-            except rospy.ServiceException:
-                pass
-
-            if resp is not None and resp.success:
+            if call_trigger_srv(self.program_stop_srv):
                 self.notif(
                     translate("UICoreRos", "Program stopped."))
                 return True
@@ -625,33 +603,13 @@ class UICoreRos(UICore):
                 if value == "PAUSE":
                     self.program_vis.vis_pause_btn_cb(None)
 
-    def create_hololens_state_msg(self, hololens_state, visualization_state=None, visualize_whole_program=None):
-
-        msg = HololensState()
-        msg.hololens_state = hololens_state
-
-        if hololens_state == HololensState.STATE_VISUALIZING and visualization_state is not None:
-            msg.visualization_state = visualization_state
-        # visualization not running at all
-        else:
-            msg.visualization_state = HololensState.VISUALIZATION_DISABLED
-
-        if visualize_whole_program is not None:
-            msg.visualize_whole_program = visualize_whole_program
-            # if visualize_whole_program:
-            #     msg.flags.append(KeyValue("visualize_whole_program", "true"))
-            # else:
-            #     msg.flags.append(KeyValue("visualize_whole_program", "false"))
-
-        return msg
-
     def v_visualize_cb(self, visualize_whole_program=True):
         """Callback for VISUALIZE button in visualization mode.
             Notify HoloLens device that visualization started.
             Draw all elements of current program."""
 
         self.hololens_state_pub.publish(
-            self.create_hololens_state_msg(
+            create_hololens_state_msg(
                 HololensState.STATE_VISUALIZING,
                 HololensState.VISUALIZATION_RUN,
                 visualize_whole_program=visualize_whole_program))
@@ -679,17 +637,11 @@ class UICoreRos(UICore):
         """Callback for BACK button in visualization mode.
             Notify HoloLens device that visualization ended."""
 
-        self.hololens_state_pub.publish(self.create_hololens_state_msg(HololensState.STATE_IDLE))
+        self.hololens_state_pub.publish(create_hololens_state_msg(HololensState.STATE_IDLE))
 
         self.visualizing = False
 
-        resp = None
-        try:
-            resp = self.stop_visualizing_srv()
-        except rospy.ServiceException as e:
-            print "Service call failed: %s" % e
-
-        if resp is not None and resp.success:
+        if call_trigger_srv(self.stop_visualizing_srv):
             self.notif(
                 translate("UICoreRos", "Program visualization stopped."))
 
@@ -708,13 +660,13 @@ class UICoreRos(UICore):
         # if visualization is paused .. then resume it - e.g. hit RESUME button
         if visualization_paused:
             self.hololens_state_pub.publish(
-                self.create_hololens_state_msg(
+                create_hololens_state_msg(
                     HololensState.STATE_VISUALIZING,
                     HololensState.VISUALIZATION_RESUME))
         # or visualization is running .. then pause it - e.g. hit PAUSE button
         else:
             self.hololens_state_pub.publish(
-                self.create_hololens_state_msg(
+                create_hololens_state_msg(
                     HololensState.STATE_VISUALIZING,
                     HololensState.VISUALIZATION_PAUSE))
 
@@ -723,7 +675,7 @@ class UICoreRos(UICore):
             Notify HoloLens device that stop button was hit."""
 
         self.hololens_state_pub.publish(
-            self.create_hololens_state_msg(
+            create_hololens_state_msg(
                 HololensState.STATE_VISUALIZING,
                 HololensState.VISUALIZATION_STOP))
 
@@ -734,7 +686,7 @@ class UICoreRos(UICore):
             Notify HoloLens device that replay button was hit."""
 
         self.hololens_state_pub.publish(
-            self.create_hololens_state_msg(
+            create_hololens_state_msg(
                 HololensState.STATE_VISUALIZING,
                 HololensState.VISUALIZATION_REPLAY))
 
@@ -746,7 +698,7 @@ class UICoreRos(UICore):
             Clear all drawed program visualization elements."""
 
         self.hololens_state_pub.publish(
-            self.create_hololens_state_msg(
+            create_hololens_state_msg(
                 HololensState.STATE_VISUALIZING,
                 HololensState.VISUALIZATION_DISABLED))
 
@@ -927,10 +879,6 @@ class UICoreRos(UICore):
         ps.pose.orientation.w = 1.0
         return ps
 
-    def is_template(self):
-
-        return self.template
-
     def learning_done_cb(self):
 
         prog = self.ph.get_program()
@@ -946,34 +894,19 @@ class UICoreRos(UICore):
 
         self.last_edited_prog_id = prog.header.id
 
-        # TODO temporarily.. find better solution.. look with the robot to default state
-        """try:
-            self.robot_look_at_default_srv()
-        except rospy.ServiceException as e:
-            print "Service call failed: %s" % e"""
-
-        resp = None
-        try:
-            resp = self.stop_learning_srv()
-        except rospy.ServiceException as e:
-            print "Service call failed: %s" % e
-
-        if resp is None or not resp.success:
+        if call_trigger_srv(self.stop_learning_srv):
 
             rospy.logwarn("Failed to stop learning mode.")
             return
 
     def hololens_active_cb(self, msg):
-        # temporarily set by default to true to avoid rosbridge crashing
-        # self.hololens_connected = True
+
         self.hololens_connected = msg.data
 
     def hololens_learning_cb(self, msg):
         self.hololens_learning = msg.data
 
     def program_selected_cb(self, prog_id, run=False, template=False, visualize=False):
-
-        self.template = template
 
         if run:
 
@@ -1072,10 +1005,6 @@ class UICoreRos(UICore):
 
                 self.notif(
                     translate("UICoreRos", "Failed to start edit mode."), message_type=NotifyUserRequest.ERROR)
-
-            # else:
-                # self.clear_all()
-                # self.show_program_vis()
 
     def learning_request_cb(self, req):
 

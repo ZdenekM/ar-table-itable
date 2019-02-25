@@ -5,7 +5,7 @@ from std_msgs.msg import Bool
 from std_srvs.srv import Trigger
 
 
-class ProjectorHelper():
+class ProjectorHelper(object):
 
     def __init__(self, proj_id):
 

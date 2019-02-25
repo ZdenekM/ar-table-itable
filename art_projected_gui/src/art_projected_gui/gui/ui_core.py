@@ -81,6 +81,29 @@ class UICore(QtCore.QObject):
         self.view.setViewportUpdateMode(QtGui.QGraphicsView.FullViewportUpdate)
         self.view.setStyleSheet("QGraphicsView { border-style: none; }")
 
+        self.items_to_keep = []
+        self.items_to_keep_timer = QtCore.QTimer()
+        self.items_to_keep_timer.timeout.connect(self.items_to_keep_timer_tick)
+        self.items_to_keep_timer.start(100)
+
+    def items_to_keep_timer_tick(self):
+
+        now = rospy.Time.now()
+
+        to_delete = []
+
+        for item, ts in self.items_to_keep:
+
+            if ts < now:
+                self.scene.removeItem(item)
+                to_delete.append((item, ts))
+
+        if to_delete:
+            rospy.loginfo("Deleting " + str(len(to_delete)) + " scene item(s).")
+
+        for td in to_delete:
+            self.items_to_keep.remove(td)
+
     def notif(self, msg, min_duration=10.0, temp=False,
               message_type=NotifyUserRequest.INFO):
         """Display message (notification) to the user.
