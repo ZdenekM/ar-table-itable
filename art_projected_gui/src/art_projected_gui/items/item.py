@@ -38,6 +38,9 @@ class Item(QtGui.QGraphicsItem):
 
     def get_attention(self):
 
+        if self.tl and self.tl.state() == QtCore.QTimeLine.Running:
+            return
+
         self.tl = QtCore.QTimeLine(3000)
         self.tl.setCurveShape(QtCore.QTimeLine.LinearCurve)
         self.tl.setLoopCount(1000)
@@ -146,13 +149,16 @@ class Item(QtGui.QGraphicsItem):
         if also_set_visibility:
             self.setVisible(state)
 
-    def hover_changed(self):
+    def stop_getting_attention(self):
 
         if self.a and self.tl:
 
             self.tl.stop()
             self.a.clear()
 
+    def hover_changed(self):
+
+        self.stop_getting_attention()
         self.update()
 
     def set_hover(self, state, source):
