@@ -323,14 +323,15 @@ class PlaceItem(ObjectItem):
 
         for it in self.collidingItems():
 
-            if isinstance(it, PoseStampedCursorItem) or isinstance(it, TouchTableItem):
-                continue
-
             if isinstance(it, PlaceItem):
+                if not self.in_collision:
+                    rospy.logwarn("Place pose in collision!")
                 self.in_collision = True
                 self.set_color(QtCore.Qt.red)
                 break
         else:
+            if self.in_collision:
+                rospy.loginfo("Place pose got out of collision.")
             self.in_collision = False
             self.set_color(QtCore.Qt.white)
 
