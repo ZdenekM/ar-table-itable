@@ -5,6 +5,7 @@ from item import Item
 import rospy
 from art_msgs.srv import NotifyUserRequest
 import rospkg
+import unicodedata
 
 
 class LabelItem(Item):
@@ -48,7 +49,8 @@ class LabelItem(Item):
 
         if temp:
             if self.temp_msgs and msg == self.temp_msgs[-1]["msg"]:
-                rospy.logdebug("Ignoring temp. notification: " + msg)
+                umsg = unicodedata.normalize('NFKD', unicode(msg)).encode('ascii', 'ignore')
+                rospy.logdebug("Ignoring temp. notification: " + umsg)
                 return
             self.temp_msgs.append(md)
         else:
