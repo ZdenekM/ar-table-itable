@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-from art_projected_gui.gui import UICore
+from art_projected_gui.gui.ui_core import UICore
 from PyQt4 import QtCore
 import rospy
 from art_msgs.msg import InstancesArray, InterfaceState, LearningRequestAction,\
-    LearningRequestGoal, HololensState, KeyValue
+    LearningRequestGoal, HololensState, KeyValue, GuiNotification
 from art_projected_gui.items import ObjectItem, ButtonItem, PoseStampedCursorItem, LabelItem,\
     ProgramListItem, ProgramItem, DialogItem, PolygonItem
 from art_projected_gui.helpers import conversions
@@ -19,6 +19,7 @@ import actionlib
 from art_utils import array_from_param, ArtApiHelper
 import tf
 import importlib
+from art_projected_gui.gui import COORD_CONST
 
 
 translate = QtCore.QCoreApplication.translate
@@ -196,6 +197,8 @@ class UICoreRos(UICore):
         self.current_instruction = None
         self.vis_instructions = []
 
+        self.notif_pub = rospy.Publisher("/art/interface/projected_gui/notifications", GuiNotification, queue_size=10)
+
         self.state_manager = InterfaceStateManager(
             "PROJECTED UI", cb=self.interface_state_cb)
 
@@ -219,6 +222,17 @@ class UICoreRos(UICore):
             plugin.init()
 
         rospy.loginfo("Projected GUI ready!")
+
+    def notif(self, msg, min_duration=10.0, temp=False, message_type=GuiNotification.INFO):
+
+        gn = GuiNotification()
+        gn.msg = str(msg.toUtf8())
+        gn.min_duration = min_duration
+        gn.temp = temp
+        gn.message_type = message_type
+        self.notif_pub.publish(gn)
+
+        super(UICoreRos, self).notif(msg, min_duration, temp, message_type)
 
     def notify_info(self):
 
@@ -1124,7 +1138,12 @@ class UICoreRos(UICore):
             obj = self.get_object(inst.object_id)
 
             if obj:
-                obj.set_pos(inst.pose.position.x, inst.pose.position.y, inst.pose.position.z)
+                obj.set_pos(
+                    inst.pose.position.x *
+                    COORD_CONST,
+                    inst.pose.position.y *
+                    COORD_CONST,
+                    inst.pose.position.z)
                 obj.set_orientation(conversions.q2a(inst.pose.orientation))
             else:
 
@@ -1135,8 +1154,8 @@ class UICoreRos(UICore):
                     self.add_object(
                         inst.object_id,
                         obj_type,
-                        inst.pose.position.x,
-                        inst.pose.position.y,
+                        inst.pose.position.x * COORD_CONST,
+                        inst.pose.position.y * COORD_CONST,
                         inst.pose.position.z,
                         conversions.q2a(
                             inst.pose.orientation),

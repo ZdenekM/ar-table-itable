@@ -8,6 +8,9 @@ from std_srvs.srv import Empty, EmptyResponse
 from threading import Thread
 from Queue import Queue
 
+PERM = ((InterfaceState.STATE_LEARNING, InterfaceState.STATE_LEARNING_RUNNING),
+        (InterfaceState.STATE_LEARNING_RUNNING, InterfaceState.STATE_LEARNING))
+
 
 class ArtSound(object):
     def __init__(self):
@@ -62,6 +65,6 @@ class ArtSound(object):
 
                 self.q.put(new.error_severity)
 
-        elif new.system_state != old.system_state:
+        elif new.system_state != old.system_state and (new.system_state, old.system_state) not in PERM:
 
             self.q.put(InterfaceState.INFO)
