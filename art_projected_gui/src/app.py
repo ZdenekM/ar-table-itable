@@ -7,7 +7,7 @@ from PyQt4 import QtGui, QtCore
 import rospkg
 
 from art_helpers import InstructionsHelper, InstructionsHelperException
-from art_projected_gui.gui import UICoreRos
+from art_projected_gui.gui.ui_core_ros import UICoreRos
 
 
 def sigint_handler(*args):

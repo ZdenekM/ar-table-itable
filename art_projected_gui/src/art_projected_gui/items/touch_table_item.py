@@ -97,8 +97,11 @@ class TouchPointItem(Item):
 
             else:
 
-                self.pointed_item.set_pos(x + self.offset[0], y + self.offset[1])
-                self.pointed_item.item_moved()
+                try:
+                    self.pointed_item.set_pos(x + self.offset[0], y + self.offset[1])
+                    self.pointed_item.item_moved()
+                except AttributeError:  # item.scene() is None
+                    self.pointed_item = None
 
         self.update()
 

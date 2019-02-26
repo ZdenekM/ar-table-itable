@@ -8,6 +8,7 @@ from art_msgs.srv import NotifyUserRequest
 from std_srvs.srv import Empty
 # import time
 import unicodedata
+from art_projected_gui.gui import COORD_CONST
 
 
 class customGraphicsView(QtGui.QGraphicsView):
@@ -253,8 +254,8 @@ class UICore(QtCore.QObject):
         return PlaceItem(
             self.scene,
             caption,
-            pose_stamped.pose.position.x,
-            pose_stamped.pose.position.y,
+            pose_stamped.pose.position.x * COORD_CONST,
+            pose_stamped.pose.position.y * COORD_CONST,
             pose_stamped.pose.position.z,
             conversions.q2a(pose_stamped.pose.orientation),
             object_type,

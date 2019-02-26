@@ -17,7 +17,7 @@ from image_geometry import PinholeCameraModel
 from geometry_msgs.msg import Pose, PoseArray
 import tf
 from art_utils import array_from_param
-from art_projected_gui.gui import SceneViewer
+from art_projected_gui.gui.scene_viewer import SceneViewer
 import rospkg
 
 

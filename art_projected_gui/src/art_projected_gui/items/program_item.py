@@ -11,6 +11,7 @@ from art_projected_gui.helpers.items import group_enable, group_visible
 from geometry_msgs.msg import PoseStamped
 from desc_item import DescItem
 import rospkg
+from art_projected_gui.gui import COORD_CONST
 
 translate = QtCore.QCoreApplication.translate
 
@@ -800,8 +801,13 @@ class ProgramItem(Item):
 
         assert len(msg.pose) > 0
 
-        msg.pose[0].pose.position.x = place.position[0]
-        msg.pose[0].pose.position.y = place.position[1]
+        print "b", place.position[0], place.position[1]
+
+        msg.pose[0].pose.position.x = place.position[0] / COORD_CONST
+        msg.pose[0].pose.position.y = place.position[1] / COORD_CONST
+
+        print "a", msg.pose[0].pose.position.x, msg.pose[0].pose.position.y
+
         msg.pose[0].pose.position.z = place.position[2]
         msg.pose[0].pose.orientation = conversions.a2q(place.quaternion)
 
