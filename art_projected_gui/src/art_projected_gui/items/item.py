@@ -80,7 +80,7 @@ class Item(QtGui.QGraphicsItem):
         if z is not None:
             self.position[2] = z
 
-        (px, py) = self.m2pix(x, y)
+        px, py = self.m2pix(x, y)
 
         # we usually want to work with scene/world coordinates
         if self.parentItem() and not parent_coords:
@@ -103,7 +103,7 @@ class Item(QtGui.QGraphicsItem):
         if not pixels:
             return self.pix2m(pos.x(), pos.y())
         else:
-            return (pos.x(), pos.y())
+            return pos.x(), pos.y()
 
     def get_pos_str(self):
 
