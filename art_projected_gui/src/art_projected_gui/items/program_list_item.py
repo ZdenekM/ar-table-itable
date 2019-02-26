@@ -129,7 +129,8 @@ class ProgramListItem(Item):
                     break
 
             self.template_btn.set_enabled(True)
-            self.visualize_btn.set_enabled(True)
+            # temporarily disabled
+            # self.visualize_btn.set_enabled(True)
 
             if self.program_selection_changed_cb:
                 self.program_selection_changed_cb(ph.id, ro=ph.readonly, learned=self.learned_dict[ph.id])
