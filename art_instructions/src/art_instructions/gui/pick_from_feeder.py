@@ -1,7 +1,6 @@
 from art_instructions.gui import GuiInstruction
 from PyQt4 import QtCore
 import rospy
-from art_msgs.msg import InstancesArray
 from geometry_msgs.msg import PoseStamped
 from collections import deque
 import tf
@@ -54,7 +53,10 @@ class PickFromFeederLearn(PickFromFeeder):
             self.last_move = {}  # timestamp of the last move for each arm
 
             if not done:
-                self.ui.notif(translate("PickFromFeeder", "Point robot's gripper on desired part in feeder."))
+                if self.ui.hololens_learning:
+                    self.ui.notif(translate("PickFromFeeder", "Point and click on desired part in feeder."))
+                else:
+                    self.ui.notif(translate("PickFromFeeder", "Point robot's gripper on desired part in feeder."))
                 self.notified = True
 
         if done:
