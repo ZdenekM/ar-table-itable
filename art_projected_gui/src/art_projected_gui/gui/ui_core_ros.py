@@ -225,14 +225,15 @@ class UICoreRos(UICore):
 
     def notif(self, msg, min_duration=10.0, temp=False, message_type=GuiNotification.INFO):
 
-        gn = GuiNotification()
-        gn.msg = str(msg.toUtf8())
-        gn.min_duration = min_duration
-        gn.temp = temp
-        gn.message_type = message_type
-        self.notif_pub.publish(gn)
+        if super(UICoreRos, self).notif(msg, min_duration, temp, message_type):
 
-        super(UICoreRos, self).notif(msg, min_duration, temp, message_type)
+            # publish only if notification was added (duplicite notifications are ignored)
+            gn = GuiNotification()
+            gn.msg = str(msg.toUtf8())
+            gn.min_duration = min_duration
+            gn.temp = temp
+            gn.message_type = message_type
+            self.notif_pub.publish(gn)
 
     def notify_info(self):
 

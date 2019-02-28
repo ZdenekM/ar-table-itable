@@ -5,7 +5,6 @@ from item import Item
 import rospy
 from art_msgs.srv import NotifyUserRequest
 import rospkg
-import unicodedata
 
 
 class LabelItem(Item):
@@ -48,15 +47,17 @@ class LabelItem(Item):
         md = {"msg": msg, "min_duration": min_duration, "shown_at": None, "type": message_type}
 
         if temp:
+            # ignore duplicite notifications
             if self.temp_msgs and msg == self.temp_msgs[-1]["msg"]:
-                umsg = unicodedata.normalize('NFKD', unicode(msg)).encode('ascii', 'ignore')
-                rospy.logdebug("Ignoring temp. notification: " + umsg)
-                return
+                return False
             self.temp_msgs.append(md)
         else:
+            if self.message and self.message["msg"] == msg:
+                return False
             self.message = md
 
         self.update()
+        return True
 
     def boundingRect(self):
 
