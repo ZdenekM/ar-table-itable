@@ -37,16 +37,21 @@ def main():
 
     loc = rospy.get_param('~locale', 'cs_CZ')
 
+    translators = []
+
     for package in packages:
 
         translator = QtCore.QTranslator()
         try:
-            translator.load(loc + '.qm', rospack.get_path(package) + '/lang')
+            if not translator.load(loc + '.qm', rospack.get_path(package) + '/lang'):
+                rospy.logerr("Failed to load translator for locale " + loc + "!")
+                continue
         except rospkg.ResourceNotFound:
             rospy.logerr("Could not find package: " + package)
             continue
 
         app.installTranslator(translator)
+        translators.append(translator)
 
     ui = UICoreRos(ih, loc)
 
