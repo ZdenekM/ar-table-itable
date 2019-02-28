@@ -86,114 +86,138 @@ class PlaceToPoseLearn(PlaceToPose):
             self.ui.notif(translate(
                 "PlaceToPose", "Select object to be picked up in instruction %1").arg(ref_id))
             self.notified = True
+            return
+
+        if self.editable:
+
+            # get current poses of arms' base links (used to display range)
+            for arm in self.ui.rh.get_robot_arms():
+
+                if not arm.base_link:
+                    self.logwarn("Arm base_link not defined!")
+                    continue
+
+                p = PoseStamped()
+                p.header.frame_id = arm.base_link
+
+                # TODO get world frame from ui (where it should be read from param)
+                try:
+                    p = self.ui.tfl.transformPose("marker", p)
+                except tf.Exception as e:
+                    self.logerr(str(e))
+                    continue
+
+                self.arms_pos[arm] = p.pose.position
+
+            if self.ui.hololens_learning:
+                self.ui.notif(
+                    translate(
+                        "PlaceToPose",
+                        "Put part on desired place. Then use blue sphere to set orientation."))
+            else:
+                self.ui.notif(
+                    translate(
+                        "PlaceToPose",
+                        "Drag object outline to set place pose. Use blue point to set orientation."))
+            self.notified = True
 
         else:
 
-            for it_id in self.ui.ph.get_items_ids(self.block_id):
+            if self.ui.ph.is_pose_set(*self.cid):
+                self.ui.notif(
+                    translate(
+                        "PlaceToPose",
+                        "You are done. However, place pose might be adjusted if necessary."))
+                self.notified = True
 
-                if self.ui.ph.get_item_msg(self.block_id, it_id).type != "PlaceToPose":
-                    continue
+        # loop through all instructions in block in order to display current and other place poses
+        # ...other place poses are displayed using dashed outline
+        for it_id in self.ui.ph.get_items_ids(self.block_id):
 
-                object_type = None
-                object_id = None
+            if self.ui.ph.get_item_msg(self.block_id, it_id).type != "PlaceToPose":
+                continue
 
-                if self.ui.ph.is_object_set(self.block_id, it_id):
-                    object_type = self.ui.art.get_object_type(self.ui.ph.get_object(self.block_id, it_id)[0][0])
+            self.show_place_for_instruction(it_id)
 
-                if it_id == self.instruction_id:
+    def show_place_for_instruction(self, it_id):
 
-                    pick_msg = self.ui.ph.get_ref_pick_item_msg(*self.cid)
+        object_type = None
+        object_id = None
+
+        if self.ui.ph.is_object_set(self.block_id, it_id):
+            object_type = self.ui.art.get_object_type(self.ui.ph.get_object(self.block_id, it_id)[0][0])
+
+        if it_id == self.instruction_id:
+
+            pick_msg = self.ui.ph.get_ref_pick_item_msg(*self.cid)
+
+            if self.editable:
+
+                add_only_one = pick_msg.type in self.ui.ih.properties.using_pose and self.ui.ph.is_pose_set(
+                    self.block_id, pick_msg.id)
+
+                if add_only_one:
+
+                    closer_arm, closer_dist = None, None
+                    lpos = self.ui.ph.get_pose(self.block_id, pick_msg.id)[0][0].pose.position
+
+                    for arm, pos in self.arms_pos.iteritems():
+
+                        dist = sqrt((pos.x - lpos.x) ** 2 + (pos.y - lpos.y) ** 2 + (pos.z - lpos.z) ** 2)
+
+                        if not closer_arm or dist < closer_dist:
+                            closer_arm, closer_dist = arm, dist
+
+                    self.selected_arm = closer_arm
+                    pos = self.arms_pos[closer_arm]
+                    self.range_ind.append(RangeVisItem(self.ui.scene, pos.x, pos.y, *closer_arm.range))
+
+                else:
+
+                    for arm, pos in self.arms_pos.iteritems():
+                        self.range_ind.append(RangeVisItem(self.ui.scene, pos.x, pos.y, *arm.range))
+
+            if self.ui.ph.is_pose_set(self.block_id, it_id):
+
+                if object_type is not None:
+
+                    ps = self.ui.ph.get_pose(self.block_id, it_id)[0][0]
+
+                    self.ui.select_object_type(object_type.name)
+                    self.place = self.ui.add_place(
+                        self.get_name(self.block_id, it_id),
+                        ps,
+                        object_type,
+                        object_id,
+                        place_cb=self.place_pose_changed,  # TODO place_cb should be set in add_place?
+                        fixed=not self.editable)
 
                     if self.editable:
 
-                        add_only_one = pick_msg.type in self.ui.ih.properties.using_pose and self.ui.ph.is_pose_set(
-                            self.block_id, pick_msg.id)
+                        if not self.check_place_pose([ps.pose.position.x,
+                                                      ps.pose.position.y,
+                                                      ps.pose.position.z]):
+                            self.place.get_attention()
 
-                        for arm in self.ui.rh.get_robot_arms():
+            elif self.editable:
 
-                            if not arm.base_link:
-                                self.logwarn("Arm base_link not defined!")
-                                continue
+                self.place = self.ui.add_place(self.get_name(self.block_id, it_id), self.ui.get_def_pose(
+                ), object_type, object_id, place_cb=self.place_pose_changed, fixed=not self.editable)
 
-                            p = PoseStamped()
-                            p.header.frame_id = arm.base_link
+                self.ui.program_vis.item_edit_btn.set_enabled(False)
+                self.place.get_attention()
 
-                            # TODO get world frame from ui (where it should be read from param)
-                            try:
-                                p = self.ui.tfl.transformPose("marker", p)
-                            except tf.Exception as e:
-                                self.logerr(str(e))
-                                continue
+            return
 
-                            self.arms_pos[arm] = p.pose.position
-
-                        if add_only_one:
-
-                            closer_arm, closer_dist = None, None
-                            lpos = self.ui.ph.get_pose(self.block_id, pick_msg.id)[0][0].pose.position
-
-                            for arm, pos in self.arms_pos.iteritems():
-
-                                dist = sqrt((pos.x - lpos.x)**2 + (pos.y - lpos.y)**2 + (pos.z - lpos.z)**2)
-
-                                if not closer_arm or dist < closer_dist:
-                                    closer_arm, closer_dist = arm, dist
-
-                            self.selected_arm = closer_arm
-                            pos = self.arms_pos[closer_arm]
-                            self.range_ind.append(RangeVisItem(self.ui.scene, pos.x, pos.y, *closer_arm.range))
-
-                        else:
-
-                            for arm, pos in self.arms_pos.iteritems():
-                                self.range_ind.append(RangeVisItem(self.ui.scene, pos.x, pos.y, *arm.range))
-
-                        self.ui.notif(
-                            translate(
-                                "PlaceToPose",
-                                "Drag object outline to set place pose. Use blue point to set orientation."))
-
-                    if self.ui.ph.is_pose_set(self.block_id, it_id):
-
-                        if object_type is not None:
-
-                            ps = self.ui.ph.get_pose(self.block_id, it_id)[0][0]
-
-                            self.ui.select_object_type(object_type.name)
-                            self.place = self.ui.add_place(
-                                self.get_name(self.block_id, it_id),
-                                ps,
-                                object_type,
-                                object_id,
-                                place_cb=self.place_pose_changed,  # TODO place_cb should be set in add_place?
-                                fixed=not self.editable)
-
-                            if self.editable:
-
-                                if not self.check_place_pose([ps.pose.position.x,
-                                                              ps.pose.position.y,
-                                                              ps.pose.position.z]):
-                                    self.place.get_attention()
-
-                    elif self.editable:
-
-                        self.place = self.ui.add_place(self.get_name(self.block_id, it_id), self.ui.get_def_pose(
-                        ), object_type, object_id, place_cb=self.place_pose_changed, fixed=not self.editable)
-
-                        self.ui.program_vis.item_edit_btn.set_enabled(False)
-                        self.place.get_attention()
-
-                    continue
-
-                if self.ui.ph.is_pose_set(self.block_id, it_id):
-                    self.ui.add_place(
-                        unicode(
-                            self.get_name(self.block_id, it_id)) + " (" + str(it_id) + ")",
-                        self.ui.ph.get_pose(self.block_id, it_id)[0][0],
-                        object_type,
-                        object_id,
-                        fixed=True,
-                        dashed=True)
+        if self.ui.ph.is_pose_set(self.block_id, it_id):
+            self.ui.add_place(
+                unicode(
+                    self.get_name(self.block_id, it_id)) + " (" + str(it_id) + ")",
+                self.ui.ph.get_pose(self.block_id, it_id)[0][0],
+                object_type,
+                object_id,
+                fixed=True,
+                dashed=True)
 
     def check_place_pose(self, pp):
 
@@ -215,7 +239,7 @@ class PlaceToPoseLearn(PlaceToPose):
         self.place.set_ext_color(QtCore.Qt.red)
 
         if not self.out_of_reach:
-            self.ui.notif(translate("PickFromFeeder", "Pose out of reach."), temp=True,
+            self.ui.notif(translate("PlaceToPose", "Pose out of reach."), temp=True,
                           message_type=NotifyUserRequest.WARN)
             self.out_of_reach = True
 

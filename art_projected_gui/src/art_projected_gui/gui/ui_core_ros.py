@@ -1030,20 +1030,20 @@ class UICoreRos(UICore):
             # TODO let the user in ar device an option to not program the robot
             if self.hololens_learning:
                 self.notif(
-                    translate("UICoreRos", "System is getting ready for learning with AR device"))
+                    translate("UICoreRos", "Getting ready for learning with Hololens..."))
                 req = LearningRequestGoal.GET_READY_WITHOUT_ROBOT
             else:
                 self.notif(
-                    translate("UICoreRos", "Robot is getting ready for learning"))
+                    translate("UICoreRos", "Robot is getting ready for learning..."))
         elif req == LearningRequestGoal.DONE:
 
-            self.notif(translate("UICoreRos", "Robot is getting into default state"))
+            self.notif(translate("UICoreRos", "Robot is getting into default state..."))
 
             self.current_instruction.learning_done()
 
         elif req == LearningRequestGoal.EXECUTE_ITEM:
             self.notif(
-                translate("UICoreRos", "Robot is executing current program instruction"))
+                translate("UICoreRos", "Robot is executing current program instruction..."))
 
         g = LearningRequestGoal()
         g.request = req
