@@ -116,23 +116,26 @@ class UICore(QtCore.QObject):
                                           is displayed instead.
         """
 
-        log_func = rospy.loginfo
-        if message_type == NotifyUserRequest.WARN:
-            log_func = rospy.logwarn
-        elif message_type == NotifyUserRequest.ERROR:
-            log_func = rospy.logerr
-        elif message_type == NotifyUserRequest.INFO:
+        added = self.bottom_label.add_msg(msg, message_type, rospy.Duration(min_duration), temp)
+
+        if added:
+
             log_func = rospy.loginfo
+            if message_type == NotifyUserRequest.WARN:
+                log_func = rospy.logwarn
+            elif message_type == NotifyUserRequest.ERROR:
+                log_func = rospy.logerr
+            elif message_type == NotifyUserRequest.INFO:
+                log_func = rospy.loginfo
 
-        msg_ascii = unicodedata.normalize('NFKD', unicode(msg)).encode('ascii', 'ignore')
+            msg_ascii = unicodedata.normalize('NFKD', unicode(msg)).encode('ascii', 'ignore')
 
-        if temp:
-            log_func("Notification (temp): " + msg_ascii)
-        else:
-            log_func("Notification: " + msg_ascii)
+            if temp:
+                log_func("Notification (temp): " + msg_ascii)
+            else:
+                log_func("Notification: " + msg_ascii)
 
-        self.bottom_label.add_msg(
-            msg, message_type, rospy.Duration(min_duration), temp)
+        return added
 
     def debug_view(self):
         """Show window with scene - for debugging purposes."""
