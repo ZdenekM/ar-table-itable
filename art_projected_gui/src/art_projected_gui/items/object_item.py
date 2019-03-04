@@ -145,14 +145,9 @@ class ObjectItem(Item):
             self.on_table = self.position[2] < self.object_type.bbox.dimensions[0] + 0.05
 
         else:
-
-            self.set_enabled(False, True)
             return
 
         self.setRotation(-angle / (math.pi * 2) * 360)
-
-        # TODO if not on table - display somewhere list of detected objects or what?
-        self.set_enabled(self.on_table, True)
 
         self.update()
 
@@ -207,9 +202,6 @@ class ObjectItem(Item):
             line = QtCore.Qt.DashLine
 
         color = self.def_color
-        if self.ext_color:
-            color = self.ext_color
-
         pen = QtGui.QPen(color, 5, line, QtCore.Qt.RoundCap)
 
         if self.selected:
@@ -220,6 +212,9 @@ class ObjectItem(Item):
         elif self.hover:
 
             pen.setWidth(10)
+
+        if self.ext_color:
+            pen.setColor(self.ext_color)
 
         painter.setPen(pen)
 
