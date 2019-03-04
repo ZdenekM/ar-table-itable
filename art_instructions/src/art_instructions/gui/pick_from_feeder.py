@@ -150,6 +150,11 @@ class PickFromFeederLearn(PickFromFeeder):
             ps.pose = obj.pose
 
             try:
+                self.ui.tfl.waitForTransform(
+                    last_arm.gripper_link,
+                    ps.header.frame_id,
+                    ps.header.stamp,
+                    rospy.Duration(5.0))
                 ps = self.ui.tfl.transformPose(last_arm.gripper_link, ps)
             except tf.Exception:
                 rospy.logerr("Failed to transform detection to gripper frame.")
