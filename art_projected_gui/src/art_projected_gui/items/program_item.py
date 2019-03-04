@@ -801,12 +801,8 @@ class ProgramItem(Item):
 
         assert len(msg.pose) > 0
 
-        print "b", place.position[0], place.position[1]
-
         msg.pose[0].pose.position.x = place.position[0] / COORD_CONST
         msg.pose[0].pose.position.y = place.position[1] / COORD_CONST
-
-        print "a", msg.pose[0].pose.position.x, msg.pose[0].pose.position.y
 
         msg.pose[0].pose.position.z = place.position[2]
         msg.pose[0].pose.orientation = conversions.a2q(place.quaternion)
