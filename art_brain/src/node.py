@@ -652,7 +652,10 @@ class ArtBrain(object):
         self.fsm.program_start()
 
     def learning_activated_timer_cb(self, event):
-        self.instruction_fsm[self.state_manager.state.program_current_item.type].learning_activated()
+        try:
+            self.instruction_fsm[self.state_manager.state.program_current_item.type].learning_activated()
+        except KeyError:
+            self.instruction_fsm["GetReady"].learning_activated()
 
     def program_resume_timer_cb(self, event):
         self.state_manager.set_system_state(
