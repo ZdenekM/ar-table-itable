@@ -142,6 +142,7 @@ class PlaceToPoseLearn(PlaceToPose):
         self.arms_pos = {}
         self.selected_arm = None
         self.out_of_reach = False
+        self.table_size = rospy.get_param("/art/conf/table/size", "1.5,0.7").split(",")
 
         if not self.ui.ph.is_object_set(*self.cid):
 
@@ -264,6 +265,9 @@ class PlaceToPoseLearn(PlaceToPose):
                                                       ps.pose.position.z]):
                             self.place.get_attention()
 
+                    # check for collisions with other place poses
+                    self.place.check_for_collision()
+
             elif self.editable:
 
                 self.place = self.ui.add_place(self.get_name(self.block_id, it_id), self.ui.get_def_pose(
@@ -290,6 +294,11 @@ class PlaceToPoseLearn(PlaceToPose):
         if not self.arms_pos:  # robot without arms (e.g. art_empty_arm)
             return True
 
+        # ignore poses out of table (probably set by another interface)
+        # ...like when object is draged by HoloLens from feeder to the table
+        if not (0 < pp[0] < self.table_size[0]) or not (0 < pp[1] < self.table_size[1]):
+            return False
+
         for arm, pos in self.arms_pos.iteritems():
 
             if self.selected_arm and arm != self.selected_arm:
@@ -299,15 +308,17 @@ class PlaceToPoseLearn(PlaceToPose):
 
             if arm.range[0] < d < arm.range[1]:
                 self.place.set_ext_color()
-                self.out_of_reach = False
+                self.out_of_reach = 0
                 return True
 
         self.place.set_ext_color(QtCore.Qt.red)
 
-        if not self.out_of_reach:
+        if self.out_of_reach == 3:
             self.ui.notif(translate("PlaceToPose", "Pose out of reach."), temp=True,
                           message_type=NotifyUserRequest.WARN)
-            self.out_of_reach = True
+
+        if self.out_of_reach < 4:
+            self.out_of_reach += 1
 
         return False
 
