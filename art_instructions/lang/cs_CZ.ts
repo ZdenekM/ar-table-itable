@@ -24,16 +24,6 @@
         <translation>Uložit pozici ramene (%1/%2)</translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/drill_points.py" line="148"/>
-        <source>Right arm</source>
-        <translation type="obsolete">Pravé rameno</translation>
-    </message>
-    <message>
-        <location filename="../src/art_instructions/gui/drill_points.py" line="148"/>
-        <source>Left arm</source>
-        <translation type="obsolete">Levé rameno</translation>
-    </message>
-    <message>
         <location filename="../src/art_instructions/gui/drill_points.py" line="164"/>
         <source>Prev pose</source>
         <translation>Předchozí</translation>
@@ -95,57 +85,17 @@
 <context>
     <name>PickFromFeeder</name>
     <message>
-        <location filename="../src/art_instructions/gui/pick_from_feeder.py" line="48"/>
-        <source>Select object type to be picked up by tapping on its outline.</source>
-        <translation type="obsolete">Vyberte typ součástky pro zvednutí dotykem na její obrys.</translation>
-    </message>
-    <message>
-        <location filename="../src/art_instructions/gui/pick_from_feeder.py" line="57"/>
-        <source>Use robot&apos;s arm and dialog to teach pose enabling part detection.</source>
-        <translation type="obsolete">Použijte rameno robota a dialog pro uložení pozice umožňující detekci.</translation>
-    </message>
-    <message>
-        <location filename="../src/art_instructions/gui/pick_from_feeder.py" line="62"/>
-        <source>Learned pose for part detection may be updated or different object type could be chosen.</source>
-        <translation type="obsolete">Můžete upravit naučenou pozici nebo vybrat jiný typ součástky.</translation>
-    </message>
-    <message>
-        <location filename="../src/art_instructions/gui/pick_from_feeder.py" line="67"/>
-        <source>Save gripper pose</source>
-        <translation type="obsolete">Uložit pozici</translation>
-    </message>
-    <message>
-        <location filename="../src/art_instructions/gui/pick_from_feeder.py" line="152"/>
-        <source>Right arm (%1)</source>
-        <translation type="obsolete">Pravé rameno (%1)</translation>
-    </message>
-    <message>
-        <location filename="../src/art_instructions/gui/pick_from_feeder.py" line="152"/>
-        <source>Left arm (%1)</source>
-        <translation type="obsolete">Levé rameno (%1)</translation>
-    </message>
-    <message>
-        <location filename="../src/art_instructions/gui/pick_from_feeder.py" line="87"/>
-        <source>Failed to store gripper pose.</source>
-        <translation type="obsolete">Nepodařilo se získat pozici ramene.</translation>
-    </message>
-    <message>
-        <location filename="../src/art_instructions/gui/pick_from_feeder.py" line="180"/>
+        <location filename="../src/art_instructions/gui/pick_from_feeder.py" line="185"/>
         <source>Gripper pose stored.</source>
         <translation>Pozice uložena.</translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/pick_from_feeder.py" line="97"/>
-        <source>Stored</source>
-        <translation type="obsolete">Uloženo</translation>
-    </message>
-    <message>
-        <location filename="../src/art_instructions/gui/pick_from_feeder.py" line="193"/>
+        <location filename="../src/art_instructions/gui/pick_from_feeder.py" line="198"/>
         <source>Picking object from feeder on my right.</source>
         <translation>Zvedám součástku z podavače po mé pravé straně.</translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/pick_from_feeder.py" line="196"/>
+        <location filename="../src/art_instructions/gui/pick_from_feeder.py" line="201"/>
         <source>Picking object from feeder on my left.</source>
         <translation>Zvedám součástku z podavače po mé levé straně.</translation>
     </message>
@@ -254,47 +204,47 @@
 <context>
     <name>PlaceToPose</name>
     <message>
-        <location filename="../src/art_instructions/gui/place_to_pose.py" line="86"/>
+        <location filename="../src/art_instructions/gui/place_to_pose.py" line="151"/>
         <source>Select object to be picked up in instruction %1</source>
         <translation>Vyberte typ součástky k zvednutí v kroku %1</translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/place_to_pose.py" line="118"/>
+        <location filename="../src/art_instructions/gui/place_to_pose.py" line="184"/>
         <source>Drag object outline to set place pose. Use blue point to set orientation.</source>
         <translation>Přesuňte obrys součástky na požadované místo. Použijte modrý bod pro nastavení natočení.</translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/place_to_pose.py" line="67"/>
+        <location filename="../src/art_instructions/gui/place_to_pose.py" line="95"/>
         <source>PLACE POSE</source>
         <translation>Místo pro položení</translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/place_to_pose.py" line="320"/>
+        <location filename="../src/art_instructions/gui/place_to_pose.py" line="397"/>
         <source>OBJECT PLACE POSE</source>
         <translation>Místo pro položení</translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/place_to_pose.py" line="296"/>
+        <location filename="../src/art_instructions/gui/place_to_pose.py" line="375"/>
         <source>Placing object to pose.</source>
         <translation>Pokládám součástku na místo.</translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/place_to_pose.py" line="54"/>
+        <location filename="../src/art_instructions/gui/place_to_pose.py" line="76"/>
         <source>Place to pose</source>
         <translation>Položení na stůl</translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/place_to_pose.py" line="113"/>
+        <location filename="../src/art_instructions/gui/place_to_pose.py" line="179"/>
         <source>Put part on desired place. Then use blue sphere to set orientation.</source>
         <translation>Položte součástku na požadované místo. Poté použijte modrou kouli na nastavení orientace.</translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/place_to_pose.py" line="127"/>
+        <location filename="../src/art_instructions/gui/place_to_pose.py" line="193"/>
         <source>You are done. However, place pose might be adjusted if necessary.</source>
         <translation>Hotovo. V případě potřeby můžete upravit pozici nebo natočení.</translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/place_to_pose.py" line="242"/>
+        <location filename="../src/art_instructions/gui/place_to_pose.py" line="317"/>
         <source>Pose out of reach.</source>
         <translation>Pozice je mimo dosah robota.</translation>
     </message>
@@ -310,16 +260,6 @@
         <location filename="../src/art_instructions/gui/visual_inspection.py" line="145"/>
         <source>Save visual inspection pose</source>
         <translation>Uložit pozici pro vizuální inspekci.</translation>
-    </message>
-    <message>
-        <location filename="../src/art_instructions/gui/visual_inspection.py" line="148"/>
-        <source>Right arm</source>
-        <translation type="obsolete">Pravé rameno</translation>
-    </message>
-    <message>
-        <location filename="../src/art_instructions/gui/visual_inspection.py" line="149"/>
-        <source>Left arm</source>
-        <translation type="obsolete">Levé rameno</translation>
     </message>
     <message>
         <location filename="../src/art_instructions/gui/visual_inspection.py" line="160"/>
@@ -344,12 +284,12 @@
     <message>
         <location filename="../src/art_instructions/gui/visual_inspection.py" line="64"/>
         <source>     Pose stored.</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">     Pozice uložena.</translation>
     </message>
     <message>
         <location filename="../src/art_instructions/gui/visual_inspection.py" line="66"/>
         <source>     Pose has to be set.</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">     Je třeba nastavit pozici.</translation>
     </message>
     <message>
         <location filename="../src/art_instructions/gui/visual_inspection.py" line="134"/>

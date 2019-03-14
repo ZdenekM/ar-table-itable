@@ -48,6 +48,6 @@ How to update language files:
 
 ```
 roscd art_projected_gui
-pylupdate4 proj.pro
+pylupdate4 -noobsolete proj.pro
 linguist lang/locale_you_want_to_tweak.ts (save, release)
 ```

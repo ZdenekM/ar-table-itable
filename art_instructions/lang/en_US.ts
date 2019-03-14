@@ -84,17 +84,17 @@
 <context>
     <name>PickFromFeeder</name>
     <message>
-        <location filename="../src/art_instructions/gui/pick_from_feeder.py" line="180"/>
+        <location filename="../src/art_instructions/gui/pick_from_feeder.py" line="185"/>
         <source>Gripper pose stored.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/pick_from_feeder.py" line="193"/>
+        <location filename="../src/art_instructions/gui/pick_from_feeder.py" line="198"/>
         <source>Picking object from feeder on my right.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/pick_from_feeder.py" line="196"/>
+        <location filename="../src/art_instructions/gui/pick_from_feeder.py" line="201"/>
         <source>Picking object from feeder on my left.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -203,47 +203,47 @@
 <context>
     <name>PlaceToPose</name>
     <message>
-        <location filename="../src/art_instructions/gui/place_to_pose.py" line="86"/>
+        <location filename="../src/art_instructions/gui/place_to_pose.py" line="151"/>
         <source>Select object to be picked up in instruction %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/place_to_pose.py" line="118"/>
+        <location filename="../src/art_instructions/gui/place_to_pose.py" line="184"/>
         <source>Drag object outline to set place pose. Use blue point to set orientation.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/place_to_pose.py" line="67"/>
+        <location filename="../src/art_instructions/gui/place_to_pose.py" line="95"/>
         <source>PLACE POSE</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/place_to_pose.py" line="320"/>
+        <location filename="../src/art_instructions/gui/place_to_pose.py" line="397"/>
         <source>OBJECT PLACE POSE</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/place_to_pose.py" line="296"/>
+        <location filename="../src/art_instructions/gui/place_to_pose.py" line="375"/>
         <source>Placing object to pose.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/place_to_pose.py" line="54"/>
+        <location filename="../src/art_instructions/gui/place_to_pose.py" line="76"/>
         <source>Place to pose</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/place_to_pose.py" line="113"/>
+        <location filename="../src/art_instructions/gui/place_to_pose.py" line="179"/>
         <source>Put part on desired place. Then use blue sphere to set orientation.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/place_to_pose.py" line="127"/>
+        <location filename="../src/art_instructions/gui/place_to_pose.py" line="193"/>
         <source>You are done. However, place pose might be adjusted if necessary.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/art_instructions/gui/place_to_pose.py" line="242"/>
+        <location filename="../src/art_instructions/gui/place_to_pose.py" line="317"/>
         <source>Pose out of reach.</source>
         <translation type="unfinished"></translation>
     </message>

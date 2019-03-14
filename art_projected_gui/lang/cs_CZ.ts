@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE TS><TS version="2.0" language="cs_CZ" sourcelanguage="">
+<!DOCTYPE TS>
+<TS version="2.0" language="cs_CZ">
 <context>
     <name>ErrorStrings</name>
     <message>
@@ -61,7 +62,7 @@
 <context>
     <name>ObjectItem</name>
     <message>
-        <location filename="../src/art_projected_gui/items/object_item.py" line="170"/>
+        <location filename="../src/art_projected_gui/items/object_item.py" line="165"/>
         <source>TYPE: </source>
         <translation>TYP:</translation>
     </message>
@@ -269,12 +270,12 @@ Success: %3, failure: %4</source>
     <message>
         <location filename="../src/art_projected_gui/gui/ui_core_ros.py" line="798"/>
         <source>Press &apos;Edit&apos; to adjust selected instruction or &apos;Run&apos; to test it out.</source>
-        <translation>Stiskněte &apos;Upravit&apos; pro úpravu vybrané instrukce, nebo &apos;Spustit&apos; pro její vykonání.</translation>
+        <translation>Stiskněte &apos;tužku&apos; pro úpravu vybrané instrukce, nebo &apos;přehrát&apos; pro její vykonání.</translation>
     </message>
     <message>
         <location filename="../src/art_projected_gui/gui/ui_core_ros.py" line="801"/>
         <source>Press &apos;Edit&apos; to adjust selected instruction.</source>
-        <translation>Stiskněte &apos;Upravit&apos; pro úpravu zvolené instrukce.</translation>
+        <translation>Stiskněte &apos;tužku&apos; pro úpravu zvolené instrukce.</translation>
     </message>
     <message>
         <location filename="../src/art_projected_gui/gui/ui_core_ros.py" line="823"/>
@@ -284,7 +285,7 @@ Success: %3, failure: %4</source>
     <message>
         <location filename="../src/art_projected_gui/gui/ui_core_ros.py" line="829"/>
         <source>Select program block and edit it. Press &apos;Done&apos; to save changes and return to program list.</source>
-        <translation>Vyberte blok a nastavte jeho instrukce. Stisk &apos;Hotovo&apos; změny uloží a zobrazí seznam programů.</translation>
+        <translation>Vyberte blok a nastavte jeho instrukce. Stisk šipky zpět změny uloží a zobrazí seznam programů.</translation>
     </message>
     <message>
         <location filename="../src/art_projected_gui/gui/ui_core_ros.py" line="849"/>
@@ -319,7 +320,7 @@ Success: %3, failure: %4</source>
     <message>
         <location filename="../src/art_projected_gui/gui/ui_core_ros.py" line="1116"/>
         <source>Program needs to be learned. Use &apos;Edit&apos; or &apos;Template&apos;.</source>
-        <translation>Program musí být nastaven. Použijte &apos;Upravit&apos; nebo &apos;Šablona&apos;.</translation>
+        <translation>Program musí být nastaven. Použijte &apos;tužku&apos; pro úpravu nebo &apos;dokument&apos; pro použití jako šablona.</translation>
     </message>
     <message>
         <location filename="../src/art_projected_gui/gui/ui_core_ros.py" line="1118"/>
