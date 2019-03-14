@@ -319,7 +319,7 @@ class PlaceItem(ObjectItem):
 
         self.last_angle = angle
 
-    def item_moved(self):
+    def check_for_collision(self):
 
         for it in self.collidingItems():
 
@@ -334,6 +334,10 @@ class PlaceItem(ObjectItem):
                 rospy.loginfo("Place pose got out of collision.")
             self.in_collision = False
             self.set_color(QtCore.Qt.white)
+
+    def item_moved(self):
+
+        self.check_for_collision()
 
     '''
         Method which sets attribute "other_items".

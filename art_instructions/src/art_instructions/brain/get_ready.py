@@ -86,4 +86,5 @@ class GetReadyFSM(BrainFSM):
 
     def state_learning_get_ready_activated(self, event):
         rospy.logdebug('Current state: state_get_ready_activated')
+        self.brain.robot.look_at_default_srv.call()
         self.fsm.done(success=True)

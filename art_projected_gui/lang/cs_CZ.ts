@@ -294,7 +294,7 @@ Success: %3, failure: %4</source>
     <message>
         <location filename="../src/art_projected_gui/gui/ui_core_ros.py" line="911"/>
         <source>Program stored with ID=</source>
-        <translation>Program uložen s ID </translation>
+        <translation>Program uložen s identifikátorem </translation>
     </message>
     <message>
         <location filename="../src/art_projected_gui/gui/ui_core_ros.py" line="935"/>

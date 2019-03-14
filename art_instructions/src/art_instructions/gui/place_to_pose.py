@@ -1,12 +1,34 @@
 from art_instructions.gui import GuiInstruction
 from PyQt4 import QtCore, QtGui
-from art_projected_gui.items import Item
+from art_projected_gui.items import Item, ObjectItem, PlaceItem
 from geometry_msgs.msg import PoseStamped
 import tf
 from math import sqrt
 from art_msgs.srv import NotifyUserRequest
+import rospy
+from functools import reduce
 
 translate = QtCore.QCoreApplication.translate
+
+
+# https://stackoverflow.com/a/21068791
+def frange(start, stop, step):
+    '''Helper float generator'''
+    while start < stop:
+        yield start
+        start += step
+
+
+def painterPathArea(path, precision=10):  # low precision is ok in this case...
+    '''QPainterPath area calculation'''
+    points = [(point.x(), point.y()) for point in (path.pointAtPercent(perc) for perc in frange(0, 1, 1.0 / precision))]
+    points.append(points[0])
+
+    return 0.5 * abs(reduce(
+        lambda sum, i: sum + (points[i][0] * points[i + 1][1] - points[i + 1][0] * points[i][1]),
+        xrange(len(points) - 1),
+        0
+    ))
 
 
 class RangeVisItem(Item):
@@ -57,6 +79,12 @@ class PlaceToPose(GuiInstruction):
 
         super(PlaceToPose, self).__init__(*args, **kwargs)
 
+        self.place = None
+        self.hidden_objects = []
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.timer_tick)
+        self.timer.start(500)
+
     def get_name(self, block_id, item_id):
 
         name = self.ui.ph.get_name(block_id, item_id)
@@ -65,6 +93,43 @@ class PlaceToPose(GuiInstruction):
             return name
 
         return translate("PlaceToPose", "PLACE POSE")
+
+    def timer_tick(self):
+
+        if self.place and self.place.hover:
+            return
+
+        for obj in self.ui.get_scene_items_by_type(ObjectItem):
+            for place_pose in self.ui.get_scene_items_by_type(PlaceItem):
+
+                if obj.object_type != place_pose.object_type or not obj.collidesWithItem(place_pose):
+                    continue
+
+                pp_shape = place_pose.mapToScene(place_pose.shape())
+                intersected = obj.mapToScene(obj.shape()).intersected(pp_shape)
+
+                rat = painterPathArea(intersected) / painterPathArea(pp_shape)
+
+                if rat > 0.5:
+                    if obj not in self.hidden_objects:
+                        obj.set_enabled(False, also_set_visibility=True)
+                        self.hidden_objects.append(obj)
+                        self.logdebug("Object ID " + obj.object_id + " hidden (" + str(rat) + ")")
+                    break
+            else:
+                if obj in self.hidden_objects:
+                    obj.set_enabled(True, also_set_visibility=True)
+                    self.hidden_objects.remove(obj)
+                    self.logdebug("Showing object ID " + obj.object_id)
+
+    def cleanup(self):
+
+        self.timer.stop()
+
+        for obj in self.hidden_objects:
+            obj.set_enabled(True, also_set_visibility=True)
+
+        return ()
 
 
 class PlaceToPoseLearn(PlaceToPose):
@@ -75,9 +140,9 @@ class PlaceToPoseLearn(PlaceToPose):
 
         self.range_ind = []
         self.arms_pos = {}
-        self.place = None
         self.selected_arm = None
         self.out_of_reach = False
+        self.table_size = rospy.get_param("/art/conf/table/size", "1.5,0.7").split(",")
 
         if not self.ui.ph.is_object_set(*self.cid):
 
@@ -102,6 +167,7 @@ class PlaceToPoseLearn(PlaceToPose):
 
                 # TODO get world frame from ui (where it should be read from param)
                 try:
+                    self.ui.tfl.waitForTransform("marker", p.header.frame_id, p.header.stamp, rospy.Duration(5.0))
                     p = self.ui.tfl.transformPose("marker", p)
                 except tf.Exception as e:
                     self.logerr(str(e))
@@ -156,7 +222,7 @@ class PlaceToPoseLearn(PlaceToPose):
                 add_only_one = pick_msg.type in self.ui.ih.properties.using_pose and self.ui.ph.is_pose_set(
                     self.block_id, pick_msg.id)
 
-                if add_only_one:
+                if add_only_one and self.arms_pos:
 
                     closer_arm, closer_dist = None, None
                     lpos = self.ui.ph.get_pose(self.block_id, pick_msg.id)[0][0].pose.position
@@ -183,7 +249,6 @@ class PlaceToPoseLearn(PlaceToPose):
 
                     ps = self.ui.ph.get_pose(self.block_id, it_id)[0][0]
 
-                    self.ui.select_object_type(object_type.name)
                     self.place = self.ui.add_place(
                         self.get_name(self.block_id, it_id),
                         ps,
@@ -191,6 +256,7 @@ class PlaceToPoseLearn(PlaceToPose):
                         object_id,
                         place_cb=self.place_pose_changed,  # TODO place_cb should be set in add_place?
                         fixed=not self.editable)
+                    self.place.set_selected(not self.editable)
 
                     if self.editable:
 
@@ -199,10 +265,14 @@ class PlaceToPoseLearn(PlaceToPose):
                                                       ps.pose.position.z]):
                             self.place.get_attention()
 
+                    # check for collisions with other place poses
+                    self.place.check_for_collision()
+
             elif self.editable:
 
                 self.place = self.ui.add_place(self.get_name(self.block_id, it_id), self.ui.get_def_pose(
                 ), object_type, object_id, place_cb=self.place_pose_changed, fixed=not self.editable)
+                self.place.set_selected(not self.editable)
 
                 self.ui.program_vis.item_edit_btn.set_enabled(False)
                 self.place.get_attention()
@@ -224,6 +294,11 @@ class PlaceToPoseLearn(PlaceToPose):
         if not self.arms_pos:  # robot without arms (e.g. art_empty_arm)
             return True
 
+        # ignore poses out of table (probably set by another interface)
+        # ...like when object is draged by HoloLens from feeder to the table
+        if not (0 < pp[0] < self.table_size[0]) or not (0 < pp[1] < self.table_size[1]):
+            return False
+
         for arm, pos in self.arms_pos.iteritems():
 
             if self.selected_arm and arm != self.selected_arm:
@@ -233,15 +308,17 @@ class PlaceToPoseLearn(PlaceToPose):
 
             if arm.range[0] < d < arm.range[1]:
                 self.place.set_ext_color()
-                self.out_of_reach = False
+                self.out_of_reach = 0
                 return True
 
         self.place.set_ext_color(QtCore.Qt.red)
 
-        if not self.out_of_reach:
+        if self.out_of_reach == 3:
             self.ui.notif(translate("PlaceToPose", "Pose out of reach."), temp=True,
                           message_type=NotifyUserRequest.WARN)
-            self.out_of_reach = True
+
+        if self.out_of_reach < 4:
+            self.out_of_reach += 1
 
         return False
 
@@ -265,6 +342,8 @@ class PlaceToPoseLearn(PlaceToPose):
         return
 
     def cleanup(self):
+
+        super(PlaceToPoseLearn, self).cleanup()
 
         for ind in self.range_ind:
             self.ui.scene.removeItem(ind)
@@ -292,7 +371,7 @@ class PlaceToPoseRun(PlaceToPose):
         if obj is not None:
 
             place_pose = self.ui.ph.get_pose(*self.cid)[0][0]
-            self.ui.add_place(self.get_name(*self.cid), place_pose, obj.object_type, obj_id, fixed=True)
+            self.place = self.ui.add_place(self.get_name(*self.cid), place_pose, obj.object_type, obj_id, fixed=True)
             self.ui.notif(translate("PlaceToPose", "Placing object to pose."))
 
         else:
@@ -308,8 +387,6 @@ class PlaceToPoseVis(PlaceToPose):
 
         object_type = None
         object_id = None
-
-        self.ui.select_object_type(self.ui.ph.get_object(*self.cid)[0][0])
 
         if self.ui.ph.is_object_set(*self.cid):
             object_type = self.ui.art.get_object_type(self.ui.ph.get_object(*self.cid)[0][0])

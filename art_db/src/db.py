@@ -2,7 +2,8 @@
 
 from art_msgs.msg import Program, ObjectType, CollisionPrimitive
 from art_msgs.srv import getProgram, getProgramResponse, getProgramHeaders, getProgramHeadersResponse, \
-    storeProgram, storeProgramResponse, getObjectType, getObjectTypeResponse, storeObjectType, storeObjectTypeResponse,\
+    storeProgram, storeProgramResponse, getObjectType, getObjectTypeResponse, getAllObjectTypes, getAllObjectTypesResponse, \
+    storeObjectType, storeObjectTypeResponse,\
     ProgramIdTrigger, ProgramIdTriggerResponse, GetCollisionPrimitives, GetCollisionPrimitivesResponse,\
     AddCollisionPrimitive, AddCollisionPrimitiveResponse, ClearCollisionPrimitives, ClearCollisionPrimitivesResponse
 import sys
@@ -34,6 +35,10 @@ class ArtDB:
                                                   self.srv_ro_clear_program_cb)
 
         self.srv_get_object = rospy.Service('/art/db/object_type/get', getObjectType, self.srv_get_object_cb)
+        self.srv_get_object_all = rospy.Service(
+            '/art/db/object_type/get_all',
+            getAllObjectTypes,
+            self.srv_get_object_all_cb)
         self.srv_store_object = rospy.Service('/art/db/object_type/store', storeObjectType, self.srv_store_object_cb)
 
         self.srv_get_collision_primitives = rospy.Service('/art/db/collision_primitives/get', GetCollisionPrimitives,
@@ -290,6 +295,27 @@ class ArtDB:
                 return resp
 
             rospy.logerr("Unknown object type: " + req.name)
+            return resp
+
+    def srv_get_object_all_cb(self, req):
+
+        with self.lock:
+
+            resp = getAllObjectTypesResponse()
+            resp.success = False
+
+            try:
+                object_types = self.db.query(ObjectType._type)
+            except rospy.ServiceException as e:
+                print "Service call failed: " + str(e)
+                return resp
+
+            if object_types:
+                for obj in object_types:
+                    resp.object_types.append(obj[0])
+                resp.success = True
+                return resp
+
             return resp
 
     def srv_store_object_cb(self, req):
