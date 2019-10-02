@@ -23,13 +23,13 @@ class ArtSound(object):
             InterfaceState.ERROR: os.path.join(pkg, 'sounds', 'error.mp3')
         }
 
+        self.q = Queue()
+
         self.manager = InterfaceStateManager("art_sound", cb=self.state_cb)
 
         self.srv_info = rospy.Service("info", Empty, self.srv_info_cb)
         self.srv_warning = rospy.Service("warning", Empty, self.srv_warning_cb)
         self.srv_error = rospy.Service("error", Empty, self.srv_error_cb)
-
-        self.q = Queue()
 
         self.th = Thread(target=self.thread_cb)
         self.th.daemon = True
