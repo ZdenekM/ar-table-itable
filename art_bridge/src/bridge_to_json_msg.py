@@ -4,6 +4,7 @@ import jsonpickle
 from art_msgs.msg import InstancesArray
 from std_msgs.msg import String
 from art_msgs.srv import getObjectTypeRequest, getObjectType
+from art_utils.art_api_helper import ArtApiHelper
 
 
 class BridgeToJsonMsg:
@@ -11,11 +12,8 @@ class BridgeToJsonMsg:
     def __init__(self):
         rospy.Subscriber("/art/object_detector/object_filtered", InstancesArray, self.callback)
         self.pub = rospy.Publisher("/objects_string", String, queue_size=1)
-        rospy.loginfo("Waiting for /art/db/object_type/get service")
-        rospy.wait_for_service("/art/db/object_type/get")
-        rospy.loginfo("Service /art/db/object_type/get found")
-        self.get_object_type_srv = rospy.ServiceProxy("/art/db/object_type/get", getObjectType)
-        self.cache = {}
+        self.api = ArtApiHelper()
+        self.api.wait_for_db_api()
         rospy.spin()
 
     def callback(self, detected_object):
@@ -33,15 +31,10 @@ class BridgeToJsonMsg:
                                                                             'y': obj.pose.orientation.y,
                                                                             'z': obj.pose.orientation.z,
                                                                             'w': obj.pose.orientation.w}}}'''
-            if obj.object_type not in self.cache:
-                req = getObjectTypeRequest()
-                req.name = obj.object_type
-                resp = self.get_object_type_srv.call(req)
-                if not resp.success:
-                    rospy.logwarn("Object type " + str(req.name) + " not in DB, skipping")
-                    continue
+            obj_type = self.api.get_object_type(obj.object_type)
 
-                self.cache[obj.object_type] = resp.object_type
+            if not obj_type:
+                continue
 
             to_json = {'name': obj.object_id,
                        'type': obj.object_type,
@@ -52,9 +45,9 @@ class BridgeToJsonMsg:
                                        'y': obj.pose.orientation.y,
                                        'z': obj.pose.orientation.z,
                                        'w': obj.pose.orientation.w},
-                       'bbox': {'x': self.cache[obj.object_type].bbox.dimensions[0],
-                                'y': self.cache[obj.object_type].bbox.dimensions[1],
-                                'z': self.cache[obj.object_type].bbox.dimensions[2]}}
+                       'bbox': {'x': obj_type.bbox.dimensions[0],
+                                'y': obj_type.bbox.dimensions[1],
+                                'z': obj_type.bbox.dimensions[2]}}
             objects.append(to_json)
         self.pub.publish(jsonpickle.encode(objects))
 
