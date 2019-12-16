@@ -15,6 +15,7 @@ class BridgeToJsonMsg:
         rospy.wait_for_service("/art/db/object_type/get")
         rospy.loginfo("Service /art/db/object_type/get found")
         self.get_object_type_srv = rospy.ServiceProxy("/art/db/object_type/get", getObjectType)
+        self.cache = {}
         rospy.spin()
 
     def callback(self, detected_object):
@@ -32,13 +33,16 @@ class BridgeToJsonMsg:
                                                                             'y': obj.pose.orientation.y,
                                                                             'z': obj.pose.orientation.z,
                                                                             'w': obj.pose.orientation.w}}}'''
-            req = getObjectTypeRequest()
-            req.name = obj.object_type
-            resp = self.get_object_type_srv.call(req)
-            if not resp.success:
-                rospy.logwarn("Object type " + str(req.name) + " not in DB, skipping")
-                continue
-            # TODO publikuje se automaticky Z poloha na 0.023 .. opravit
+            if obj.object_type not in self.cache:
+                req = getObjectTypeRequest()
+                req.name = obj.object_type
+                resp = self.get_object_type_srv.call(req)
+                if not resp.success:
+                    rospy.logwarn("Object type " + str(req.name) + " not in DB, skipping")
+                    continue
+
+                self.cache[obj.object_type] = resp.object_type
+
             to_json = {'name': obj.object_id,
                        'type': obj.object_type,
                        'position': {'x': obj.pose.position.x,  # in meters
@@ -48,9 +52,9 @@ class BridgeToJsonMsg:
                                        'y': obj.pose.orientation.y,
                                        'z': obj.pose.orientation.z,
                                        'w': obj.pose.orientation.w},
-                       'bbox': {'x': resp.object_type.bbox.dimensions[0],
-                                'y': resp.object_type.bbox.dimensions[1],
-                                'z': resp.object_type.bbox.dimensions[2]}}
+                       'bbox': {'x': self.cache[obj.object_type].bbox.dimensions[0],
+                                'y': self.cache[obj.object_type].bbox.dimensions[1],
+                                'z': self.cache[obj.object_type].bbox.dimensions[2]}}
             objects.append(to_json)
         self.pub.publish(jsonpickle.encode(objects))
 
